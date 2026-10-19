@@ -13,11 +13,18 @@ Still to build:
 - Credit notes for refunds or corrections
 - Statement per customer and an "unpaid invoices" list on the dashboard
 
-## 2. Petty cash system
-- Cash float with a running balance
-- Cash in (top-ups from the bank) and cash out (small purchases), with a photo of each slip
+## 2. Petty cash system ("Bank and cash" page)
+Model: the DF Elements shop admin → Bank and cash page (screenshot 19 Oct 2026).
+- One card per account: the bank account and Petty cash, each with its current balance
+  and "started at R… on <date>", plus an "All together" total card
+- Buttons: **Move money** (e.g. bank → petty cash top-up), **Money in**, **Money out**,
+  **Check against statement** (links to item 3), **Download CSV**
+- This month at a glance: balance now, money in this month (paid invoices + money in),
+  money out this month (expenses + money out), number of expenses paid from this account
+- Running ledger per account: date, what, in, out, balance; starting balance at the bottom
+- Cash out needs a photo of the slip; each cash-out also lands in Expenses with its
+  category, so nothing is captured twice
 - Monthly cash count, showing the difference between counted and expected
-- Each cash-out also appears in Expenses, with its category, so nothing is captured twice
 
 ## 3. Bank reconciliation with bank statement upload
 - Upload the bank statement (CSV export from the bank; PDF if the bank only offers that)
@@ -25,3 +32,19 @@ Still to build:
 - Show unmatched lines so they can be captured as a new expense or payment in one click
 - Month-end report: bank balance vs. the system's balance, with the differences listed
 - Which bank NJR uses decides the statement format; confirm it before building
+
+## 4. Q & A page
+Model: the DF Elements shop admin → Q and A.
+- Public "Questions" page on the website (e.g. "Do you deliver?", "Do you galvanise?",
+  "How long does a trailer build take?", "Do you do roadworthy paperwork?")
+- Staff add, edit, reorder and hide questions in the back end; no coding needed
+- Link it from the menu and from the quote form ("Check our Q & A")
+
+## 5. Settings: business and bank details
+Model: the DF Elements shop admin → Settings (screenshot 19 Oct 2026).
+- **Bank details for EFT** as separate boxes (bank, account name, account number, branch code)
+  instead of one text box; printed on invoices and shown to customers who accept a quote
+- **Business details**: business name, address, email, phone, VAT number (if registered)
+- **VAT on/off switch** with the rate. While off, quotes and invoices show no VAT and are
+  not called "tax invoice". Quotes and invoices already issued keep the VAT they were made with
+- NJR currently always adds 15% VAT; confirm whether NJR is VAT registered
