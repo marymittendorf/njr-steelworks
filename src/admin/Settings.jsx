@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { supabase } from '../supabase.js'
-import { n } from '../costing.js'
+import { n, computeFromPrices } from '../costing.js'
+import { money0 } from '../format.js'
+import { SERVICES } from '../services.js'
 import { ErrorNote } from './ui.jsx'
 
 const RATE_FIELDS = [
@@ -14,12 +16,22 @@ const RATE_FIELDS = [
   ['deposit', 'Deposit (%)', 'Required to book work'],
 ]
 
-export default function Settings({ settings, syncFromPrices, toast }) {
-  const [f, setF] = useState(() => ({ ...settings, people: settings.people.map((p) => ({ ...p })) }))
+export default function Settings({ settings, prices, syncFromPrices, toast }) {
+  const [f, setF] = useState(() => ({
+    ...settings,
+    people: settings.people.map((p) => ({ ...p })),
+    web: Object.fromEntries(SERVICES.map((s) => {
+      const cur = settings.from_prices?.[s.key]
+      return [s.key, { label: cur?.label || s.defaultLabel, price: cur?.price ?? '' }]
+    })),
+  }))
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const setPerson = (i, k, v) => setF({ ...f, people: f.people.map((p, j) => (j === i ? { ...p, [k]: v } : p)) })
+  const setWeb = (key, k, v) => setF({ ...f, web: { ...f.web, [key]: { ...f.web[key], [k]: v } } })
+  // What the costing templates come to with today's rates, as a guide only.
+  const suggested = computeFromPrices(f, prices.filter((p) => p.active))
 
   async function save(e) {
     e.preventDefault()
@@ -27,6 +39,10 @@ export default function Settings({ settings, syncFromPrices, toast }) {
     const patch = Object.fromEntries(RATE_FIELDS.map(([k]) => [k, n(f[k])]))
     patch.people = f.people.filter((p) => p.name.trim())
     patch.bank_details = f.bank_details
+    patch.from_prices = Object.fromEntries(SERVICES.map((s) => {
+      const w = f.web[s.key]
+      return [s.key, { label: w.label.trim() || s.defaultLabel, price: n(w.price) > 0 ? Math.round(n(w.price)) : null }]
+    }))
     patch.updated_at = new Date().toISOString()
     const { error } = await supabase.from('settings').update(patch).eq('id', 1)
     if (error) { setError(error); setBusy(false); return }
@@ -37,10 +53,26 @@ export default function Settings({ settings, syncFromPrices, toast }) {
   return (
     <form onSubmit={save}>
       <div className="pagehead">
-        <div><h1>Rates &amp; settings</h1><p>These drive new costings and the "from" prices on the website. Saved quotes keep their own rates.</p></div>
+        <div><h1>Rates &amp; settings</h1><p>Website prices, costing rates, contact people and banking details. Saved quotes keep their own rates.</p></div>
         <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save settings'}</button>
       </div>
       <ErrorNote error={error} />
+
+      <div className="block-head"><h3>Website prices</h3><span className="hint">The "from" price on each service card, incl. VAT. Leave the price empty to show "Ask for a quote".</span></div>
+      <div className="tbl-wrap block"><table>
+        <thead><tr><th>Card</th><th>Wording before the price</th><th className="r">Price incl. VAT (R)</th></tr></thead>
+        <tbody>
+          {SERVICES.map((s) => (
+            <tr key={s.key}>
+              <td><b>{s.h}</b>{suggested[s.key] && <div className="hint" style={{ fontSize: '.8rem' }}>Costing comes to about {money0(suggested[s.key])}</div>}</td>
+              <td><input aria-label={`Wording for ${s.h}`} value={f.web[s.key].label} onChange={(e) => setWeb(s.key, 'label', e.target.value)} /></td>
+              <td className="r"><input className="money num" aria-label={`Price for ${s.h}`} type="number" min="0" step="100" value={f.web[s.key].price} onChange={(e) => setWeb(s.key, 'price', e.target.value)} placeholder="Ask for a quote" style={{ width: 150 }} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+
+      <div className="block-head"><h3>Costing rates</h3></div>
       <div className="card block"><div className="fgrid">
         {RATE_FIELDS.map(([k, label, hint]) => (
           <div className="field" key={k}><label htmlFor={`s-${k}`}>{label}</label>

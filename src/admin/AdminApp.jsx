@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { computeFromPrices } from '../costing.js'
 import Login from './Login.jsx'
 import Dashboard from './Dashboard.jsx'
 import Requests from './Requests.jsx'
@@ -71,12 +70,9 @@ function StaffShell({ session }) {
     return data || []
   }, [])
 
-  // Keep the public "from" prices in line with the latest rates and steel prices.
+  // Website "from" prices are typed in by staff (Settings), so this only refreshes data.
   const syncFromPrices = useCallback(async () => {
-    const [s, p] = await Promise.all([loadSettings(), loadPrices()])
-    if (!s) return
-    const from_prices = computeFromPrices(s, p.filter((x) => x.active))
-    await supabase.from('settings').update({ from_prices }).eq('id', 1)
+    await Promise.all([loadSettings(), loadPrices()])
   }, [loadSettings, loadPrices])
 
   const refreshCount = useCallback(async () => {

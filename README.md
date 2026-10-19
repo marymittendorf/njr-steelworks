@@ -2,7 +2,7 @@
 
 Public website and staff back end for NJR Steelworks (trailers, skips, fabrication, welding, gates).
 
-- `/` is the public site: services with live "from" prices, recent work photos, contact people, and a quote request form with photo upload.
+- `/` is the public site: services with "from" prices you set under Rates & settings, recent work photos, contact people, and a quote request form with photo upload.
 - `/admin` is the staff back end: dashboard, website requests, quotes & jobs, job costing with customer quote/invoice (print or save as PDF), steel price list, website photos, and rates & settings.
 
 Stack: Vite + React, Supabase (database, login, file storage), deploys to Vercel.

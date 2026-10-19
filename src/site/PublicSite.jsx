@@ -1,14 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { money0, waNumber } from '../format.js'
-
-const SERVICES = [
-  { tag: 'Trailers', h: 'Trailers', items: ['New builds to your size, 1.8 m to 4 m', 'Mesh cages, lids, ramps and tool boxes', 'Floors, axles, springs, wiring and lights', 'Galvanised or painted finish'], from: 'trailer', fromLabel: '3.0 m cage trailer from' },
-  { tag: 'Skips', h: 'Skips', items: ["New 2 m³ and 3 m³ builder's skips", 'Floor and side replacement', 'Lifting lugs and pins renewed', 'Fleet rates for skip hire companies'], from: 'skip', fromLabel: '2 m³ skip from' },
-  { tag: 'Custom work', h: 'Steel fabrication', items: ['Frames, racks and brackets', 'Farm and workshop equipment', 'One-off parts made to drawing or sample'], from: null },
-  { tag: 'All steel work', h: 'Welding', items: ['MIG and arc welding in the workshop', 'Cracked frames and broken brackets', 'On-site welding by arrangement'], from: 'skiprep', fromLabel: 'Skip floor repair from' },
-  { tag: 'General repairs', h: 'Gates & structures', items: ['Driveway and farm gates', 'Burglar bars and security frames', 'Carports, canopies and steel structures'], from: null },
-]
+import { SERVICES } from '../services.js'
 
 const PLACEHOLDER_WORK = [
   { title: '3.0 m cage trailer', caption: 'Galvanised, 750 kg GVM' },
@@ -73,11 +66,12 @@ export default function PublicSite() {
         <div className="wrap">
           <div className="band-head">
             <h2>What we do</h2>
-            <p>"From" prices come from our costing system using current steel prices, and include VAT. Your quote is priced to your exact size and spec.</p>
+            <p>Prices include VAT. Your quote is priced to your exact size and spec.</p>
           </div>
           <div className="services five">
             {SERVICES.map((s) => {
-              const price = s.from && info.from_prices?.[s.from]
+              const set = info.from_prices?.[s.key]
+              const price = Number(set?.price) > 0 ? Number(set.price) : null
               return (
                 <article className="svc" key={s.h}>
                   <span className="tag">{s.tag}</span>
@@ -85,7 +79,7 @@ export default function PublicSite() {
                   <ul>{s.items.map((i) => <li key={i}>{i}</li>)}</ul>
                   <div className="from">
                     {price
-                      ? <><span className="label">{s.fromLabel}</span><b className="num">{money0(price)}</b></>
+                      ? <><span className="label">{set.label || s.defaultLabel}</span><b className="num">{money0(price)}</b></>
                       : <><span className="label">Priced per job</span><a href="#quote">Ask for a quote</a></>}
                   </div>
                 </article>
