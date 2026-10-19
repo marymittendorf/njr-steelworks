@@ -6,3 +6,6 @@ dist
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# supplier invoices are kept in Supabase, not in git
+Invoice-*.pdf

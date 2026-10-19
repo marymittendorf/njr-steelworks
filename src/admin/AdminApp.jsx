@@ -6,6 +6,7 @@ import Dashboard from './Dashboard.jsx'
 import Requests from './Requests.jsx'
 import Jobs from './Jobs.jsx'
 import JobCosting from './JobCosting.jsx'
+import Expenses from './Expenses.jsx'
 import Prices from './Prices.jsx'
 import Settings from './Settings.jsx'
 import Gallery from './Gallery.jsx'
@@ -30,6 +31,7 @@ const PAGES = [
   ['requests', 'Requests'],
   ['jobs', 'Quotes & jobs'],
   ['cost', 'Job costing'],
+  ['expenses', 'Expenses'],
   ['prices', 'Steel price list'],
   ['gallery', 'Website photos'],
   ['settings', 'Rates & settings'],
@@ -142,6 +144,7 @@ function StaffShell({ session }) {
             {page === 'requests' && <Requests {...props} />}
             {page === 'jobs' && <Jobs {...props} />}
             {page === 'cost' && <JobCosting key={costTarget?.nonce || 'new'} target={costTarget} {...props} />}
+            {page === 'expenses' && <Expenses {...props} />}
             {page === 'prices' && <Prices {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}
             {page === 'gallery' && <Gallery {...props} />}
             {page === 'settings' && <Settings {...props} syncFromPrices={syncFromPrices} />}
