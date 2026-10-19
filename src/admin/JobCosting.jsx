@@ -110,6 +110,7 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
           <div className="card block"><div className="fgrid">
             <div className="field"><label htmlFor="c-cust">Customer</label><input id="c-cust" value={job.customer} onChange={(e) => upd({ customer: e.target.value })} /></div>
             <div className="field"><label htmlFor="c-phone">Cell</label><input id="c-phone" value={job.phone || ''} onChange={(e) => upd({ phone: e.target.value })} /></div>
+            <div className="field full"><label htmlFor="c-email">Customer email</label><input id="c-email" type="email" value={job.email || ''} onChange={(e) => upd({ email: e.target.value })} placeholder="For emailing the quote and invoice" /></div>
             <div className="field full"><label htmlFor="c-title">Job description (shown on quote)</label><input id="c-title" value={job.title} onChange={(e) => upd({ title: e.target.value })} /></div>
             <div className="field"><label htmlFor="c-units">Number of identical units</label><input id="c-units" type="number" min="1" step="1" value={job.units} onChange={(e) => upd({ units: e.target.value })} /></div>
             <div className="field"><label htmlFor="c-status">Stage</label>
@@ -213,7 +214,11 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
         </aside>
       </div>
 
-      {showDoc && <QuoteDoc job={job} settings={settings} onClose={() => setShowDoc(false)} />}
+      {showDoc && <QuoteDoc job={job} settings={settings} onClose={() => setShowDoc(false)} onSent={async (msg) => {
+        toast(msg); setShowDoc(false)
+        const { data } = await supabase.from('jobs').select('*').eq('id', job.id).single() // status may now be Quote sent
+        if (data) setJob(data)
+      }} />}
     </>
   )
 }

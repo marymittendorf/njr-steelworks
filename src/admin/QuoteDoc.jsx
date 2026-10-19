@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../supabase.js'
 import { calc, customerLines } from '../costing.js'
 import { addDays, money, shortDate } from '../format.js'
 
-export default function QuoteDoc({ job, settings, onClose }) {
+export default function QuoteDoc({ job, settings, onClose, onSent }) {
+  const docRef = useRef(null)
+  const [emailing, setEmailing] = useState(false)
   const t = calc(job)
   const r = job.rates
   const isInvoice = Boolean(job.invoice_no) // an accepted quote becomes an invoice (numbered by the database)
@@ -19,11 +22,13 @@ export default function QuoteDoc({ job, settings, onClose }) {
       <div className="doc-bar">
         <span className="label" style={{ color: '#fff' }}>Customer view · {isInvoice ? 'tax invoice' : 'quotation'}</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn small primary" type="button" onClick={() => window.print()}>Print / save PDF</button>
+          {job.id && <button className="btn small primary" type="button" onClick={() => setEmailing(!emailing)}>Email to client</button>}
+          <button className="btn small" type="button" onClick={() => window.print()}>Print / save PDF</button>
           <button className="btn small" type="button" onClick={onClose}>Close</button>
         </div>
       </div>
-      <div className="doc">
+      {emailing && <EmailPanel job={job} isInvoice={isInvoice} total={t.total} docRef={docRef} onSent={(msg) => { setEmailing(false); onSent?.(msg) }} />}
+      <div className="doc" ref={docRef}>
         <div className="dh">
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
             <img src="/logo.webp" alt="NJR Steelworks" />
@@ -63,6 +68,80 @@ export default function QuoteDoc({ job, settings, onClose }) {
           {settings.bank_details && `\n\nBanking details:\n${settings.bank_details}\nReference: ${isInvoice ? job.invoice_no : job.quote_no}`}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Turns the document on screen into a PDF and sends it through the send-document Edge Function.
+function EmailPanel({ job, isInvoice, total, docRef, onSent }) {
+  const kind = isInvoice ? 'Invoice' : 'Quote'
+  const number = isInvoice ? job.invoice_no : job.quote_no
+  const first = (job.customer || '').split(' ')[0]
+  const [to, setTo] = useState(job.email || '')
+  const [subject, setSubject] = useState(`${isInvoice ? 'Invoice' : 'Quotation'} ${number} from NJR Steelworks`)
+  const [message, setMessage] = useState(isInvoice
+    ? `Hi ${first},
+
+Please find attached invoice ${number} for ${job.title} (${money(total)} incl. VAT).
+
+Thank you for your business.
+
+Kind regards
+NJR Steelworks
+George, Western Cape`
+    : `Hi ${first},
+
+Thank you for your enquiry. Please find attached quotation ${number} for ${job.title} (${money(total)} incl. VAT).
+
+Reply to this email or WhatsApp us to accept, and we'll book your job.
+
+Kind regards
+NJR Steelworks
+George, Western Cape`)
+  const [state, setState] = useState({ busy: false, error: '' })
+  const [log, setLog] = useState([])
+
+  useEffect(() => {
+    supabase.from('job_emails').select('*').eq('job_id', job.id).order('sent_at', { ascending: false }).then(({ data }) => setLog(data || []))
+  }, [job.id])
+
+  async function send() {
+    setState({ busy: true, error: '' })
+    try {
+      const { default: html2pdf } = await import('html2pdf.js')
+      const dataUri = await html2pdf().set({
+        margin: 8, image: { type: 'jpeg', quality: 0.92 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      }).from(docRef.current).outputPdf('datauristring')
+      const { error } = await supabase.functions.invoke('send-document', {
+        body: { job_id: job.id, kind, to: to.trim(), subject, message, filename: `${number}.pdf`, pdf_base64: dataUri.split(',')[1] },
+      })
+      if (error) {
+        const msg = await error.context?.json?.().then((j) => j.error).catch(() => null)
+        throw new Error(msg || 'The email did not go. Try again.')
+      }
+      onSent(`${kind} ${number} emailed to ${to.trim()}`)
+    } catch (e) {
+      setState({ busy: false, error: e.message })
+      return
+    }
+    setState({ busy: false, error: '' })
+  }
+
+  return (
+    <div className="card email-panel">
+      <div className="fgrid">
+        <div className="field"><label htmlFor="em-to">To</label><input id="em-to" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="customer@example.com" /></div>
+        <div className="field"><label htmlFor="em-subj">Subject</label><input id="em-subj" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
+        <div className="field full"><label htmlFor="em-msg">Message</label><textarea id="em-msg" value={message} onChange={(e) => setMessage(e.target.value)} style={{ minHeight: 150 }} /></div>
+      </div>
+      {state.error && <div className="errmsg">{state.error}</div>}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12 }}>
+        <button className="btn primary" type="button" disabled={state.busy || !to.trim()} onClick={send}>{state.busy ? 'Making the PDF and sending…' : `Send ${kind.toLowerCase()} as PDF`}</button>
+        <span className="hint">{number}.pdf is attached. Replies come to your own NJR mailbox.</span>
+      </div>
+      {log.length > 0 && <p className="hint" style={{ marginBottom: 0 }}>Sent before: {log.map((l) => `${l.kind} to ${l.sent_to} on ${shortDate(l.sent_at)}${l.sent_by ? ` by ${l.sent_by}` : ''}`).join(' · ')}</p>}
     </div>
   )
 }

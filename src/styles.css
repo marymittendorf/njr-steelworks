@@ -238,6 +238,7 @@ tr.clickable:hover td{background:var(--panel-2)}
 .doc .totals .grand{font-weight:700;font-size:1.15rem;border-top:2px solid #1B1C1E;padding-top:6px}
 .doc .muted{color:#6A6F76}
 .doc .terms{margin-top:22px;font-size:.85rem;color:#4A4E54;border-top:1px solid #E4E6E9;padding-top:12px;white-space:pre-line}
+.email-panel{max-width:800px;margin:0 auto 12px}
 .doc-bar{max-width:800px;margin:0 auto 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 
 @media (max-width:960px){
