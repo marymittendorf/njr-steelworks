@@ -5,7 +5,7 @@ import { addDays, money, shortDate } from '../format.js'
 export default function QuoteDoc({ job, settings, onClose }) {
   const t = calc(job)
   const r = job.rates
-  const isInvoice = ['Invoiced', 'Paid'].includes(job.status)
+  const isInvoice = ['Invoiced', 'Paid'].includes(job.payment_status)
   const lines = customerLines(job)
 
   useEffect(() => {

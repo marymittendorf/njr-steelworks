@@ -40,7 +40,7 @@ Model: the DF Elements shop admin → Q and A.
 - Staff add, edit, reorder and hide questions in the back end; no coding needed
 - Link it from the menu and from the quote form ("Check our Q & A")
 
-## 6. Order tracker, deliveries and stock (from Forever Planks)
+## 6. ✅ DONE 19 Oct 2026: Order tracker, deliveries and stock (from Forever Planks)
 Model: github.com/marymittendorf/forever-planks-orders (read 19 Oct 2026; plain JS + Supabase).
 Bring into the NJR back end, built in NJR's React app rather than copied as-is:
 - **Order tracker** on Quotes & jobs: status cards with counts (Not started, In workshop,

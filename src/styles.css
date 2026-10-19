@@ -168,7 +168,11 @@ tr.clickable:hover td{background:var(--panel-2)}
 
 .pill{display:inline-block;padding:2px 10px;border-radius:12px;font-family:var(--f-label);font-weight:600;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor;white-space:nowrap}
 .st-New{color:var(--accent-hi)} .st-Quoted{color:var(--info)} .st-Draft{color:var(--muted)} .st-Quote-sent{color:var(--info)} .st-Accepted{color:var(--good)}
-.st-In-workshop{color:var(--warn)} .st-Ready-for-collection{color:var(--good)} .st-Invoiced{color:var(--info)} .st-Paid{color:var(--muted)} .st-Declined{color:var(--bad)}
+.st-In-workshop{color:var(--warn)} .st-Ready{color:var(--good)} .st-Delivered{color:var(--muted)} .st-Declined{color:var(--bad)}
+.st-Scheduled{color:var(--info)} .st-Done{color:var(--good)} .st-Cancelled{color:var(--muted)} .st-In-stock{color:var(--good)} .st-Sold{color:var(--muted)}
+.kpi-btn{text-align:left;cursor:pointer;color:inherit;font:inherit}
+.kpi-btn:hover{border-color:var(--steel)}
+.kpi-btn.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .filters button{background:transparent;border:1px solid var(--line);border-radius:14px;padding:4px 12px;cursor:pointer;font-size:.85rem;color:var(--muted)}
@@ -197,6 +201,22 @@ tr.clickable:hover td{background:var(--panel-2)}
 .gal-admin{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
 .gal-admin .card{padding:12px;display:flex;flex-direction:column;gap:8px}
 .gal-admin img{aspect-ratio:4/3;object-fit:cover;border-radius:4px;width:100%}
+
+/* deliveries calendar + signature */
+.cal-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+.cal{padding:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{font-family:var(--f-label);text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;color:var(--muted);text-align:center;padding:4px 0}
+.cal-day{aspect-ratio:1;max-width:100%;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0;color:var(--fg)}
+.cal-day:hover{border-color:var(--steel)}
+.cal-day.today span{color:var(--accent-hi);font-weight:700}
+.cal-day.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cal-day i{font-style:normal;font-size:.72rem;background:var(--accent);color:var(--accent-ink);border-radius:9px;padding:0 6px;font-weight:700}
+.cal-day i.done{background:var(--good)}
+.up-row{display:flex;justify-content:space-between;gap:10px;width:100%;background:none;border:0;border-bottom:1px solid var(--line);padding:8px 0;cursor:pointer;color:var(--fg);text-align:left}
+.up-row:last-child{border-bottom:0}
+.sig-pad{width:100%;height:200px;border:1px solid var(--line);border-radius:6px;background:#fff;touch-action:none;cursor:crosshair}
+@media (max-width:960px){.cal-layout{grid-template-columns:1fr}}
 
 .login{min-height:100vh;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .login .card{width:100%;max-width:400px;display:flex;flex-direction:column;gap:14px}

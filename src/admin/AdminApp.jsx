@@ -5,6 +5,9 @@ import Dashboard from './Dashboard.jsx'
 import Requests from './Requests.jsx'
 import Jobs from './Jobs.jsx'
 import JobCosting from './JobCosting.jsx'
+import Orders from './Orders.jsx'
+import Stock from './Stock.jsx'
+import Deliveries from './Deliveries.jsx'
 import Expenses from './Expenses.jsx'
 import Prices from './Prices.jsx'
 import Settings from './Settings.jsx'
@@ -29,7 +32,10 @@ export default function AdminApp() {
 const PAGES = [
   ['dash', 'Dashboard'],
   ['requests', 'Requests'],
-  ['jobs', 'Quotes & jobs'],
+  ['jobs', 'Quotes'],
+  ['orders', 'Orders'],
+  ['deliveries', 'Deliveries'],
+  ['stock', 'Stock'],
   ['cost', 'Job costing'],
   ['expenses', 'Expenses'],
   ['prices', 'Steel price list'],
@@ -49,6 +55,7 @@ function StaffShell({ session }) {
   const [prices, setPrices] = useState(null)
   const [page, setPage] = useState(pageFromHash)
   const [costTarget, setCostTarget] = useState(null) // {jobId} | {draft} | {} = new blank, plus a nonce
+  const [deliveryTarget, setDeliveryTarget] = useState(null) // {jobId} | {stockItemId}: open a booking form
   const [newCount, setNewCount] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
   const toastTimer = useRef()
@@ -98,6 +105,7 @@ function StaffShell({ session }) {
   const go = useCallback((p, target) => {
     // A fresh nonce each time remounts the costing screen, so "New costing" always starts clean.
     if (p === 'cost') setCostTarget({ ...(target || {}), nonce: Date.now() })
+    if (p === 'deliveries') setDeliveryTarget(target ? { ...target, nonce: Date.now() } : null)
     if (window.location.hash !== '#' + p) window.location.hash = p
     setPage(p)
     window.scrollTo(0, 0)
@@ -141,6 +149,9 @@ function StaffShell({ session }) {
             {page === 'dash' && <Dashboard {...props} />}
             {page === 'requests' && <Requests {...props} />}
             {page === 'jobs' && <Jobs {...props} />}
+            {page === 'orders' && <Orders {...props} />}
+            {page === 'deliveries' && <Deliveries key={deliveryTarget?.nonce || 'cal'} target={deliveryTarget} {...props} />}
+            {page === 'stock' && <Stock {...props} />}
             {page === 'cost' && <JobCosting key={costTarget?.nonce || 'new'} target={costTarget} {...props} />}
             {page === 'expenses' && <Expenses {...props} />}
             {page === 'prices' && <Prices {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}

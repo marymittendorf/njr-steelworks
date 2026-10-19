@@ -33,21 +33,21 @@ export function JobsTable({ jobs, go }) {
 export default function Jobs({ go }) {
   const [jobs, setJobs] = useState(null)
   const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('Open')
+  const [filter, setFilter] = useState('Quotes')
 
   useEffect(() => {
     supabase.from('jobs').select('*').order('created_at', { ascending: false })
       .then(({ data, error }) => { setJobs(data || []); setError(error) })
   }, [])
 
-  const filters = ['Open', 'All', ...STATUSES]
+  const filters = ['Quotes', 'All', ...STATUSES]
   const shown = (jobs || []).filter((j) =>
-    filter === 'All' ? true : filter === 'Open' ? !['Paid', 'Declined'].includes(j.status) : j.status === filter)
+    filter === 'All' ? true : filter === 'Quotes' ? ['Draft', 'Quote sent'].includes(j.status) : j.status === filter)
 
   return (
     <>
       <div className="pagehead">
-        <div><h1>Quotes &amp; jobs</h1><p>Every quote, from draft to paid. Click a row to open its costing.</p></div>
+        <div><h1>Quotes</h1><p>Drafts and quotes waiting for the customer. Accepted quotes move to Orders. Click a row to open it.</p></div>
         <button className="btn primary" type="button" onClick={() => go('cost', null)}>New costing</button>
       </div>
       <div className="filters" role="group" aria-label="Filter by status">

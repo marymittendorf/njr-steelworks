@@ -26,9 +26,9 @@ export default function Dashboard({ go }) {
   const rows = jobs.map((j) => ({ j, t: calc(j) }))
   const sum = (a) => a.reduce((s, x) => s + x.t.total, 0)
   const awaiting = rows.filter((x) => x.j.status === 'Quote sent')
-  const onHand = rows.filter((x) => ['Accepted', 'In workshop', 'Ready for collection'].includes(x.j.status))
-  const owed = rows.filter((x) => x.j.status === 'Invoiced')
-  const won = rows.filter((x) => !['Draft', 'Quote sent', 'Declined'].includes(x.j.status))
+  const onHand = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Accepted', 'In workshop', 'Ready'].includes(x.j.status))
+  const owed = rows.filter((x) => x.j.job_type !== 'Built for stock' && x.j.payment_status === 'Invoiced')
+  const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Accepted', 'In workshop', 'Ready', 'Delivered'].includes(x.j.status))
   const avgMargin = won.length ? won.reduce((a, x) => a + x.t.margin, 0) / won.length : 0
   const agg = won.reduce((a, { t }) => ({
     m: a.m + t.materials + t.galv + t.extras, l: a.l + t.labour + t.consumables, o: a.o + t.overhead, p: a.p + t.markup,
@@ -45,7 +45,7 @@ export default function Dashboard({ go }) {
         <button type="button" className="kpi" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => go('requests')}>
           <span className="label">New requests</span><b className="num">{newReq}</b><span className="sub">From the website form</span></button>
         <div className="kpi"><span className="label">Quotes awaiting reply</span><b className="num">{awaiting.length}</b><span className="sub num">{money0(sum(awaiting))}</span></div>
-        <div className="kpi"><span className="label">Work on hand</span><b className="num">{onHand.length}</b><span className="sub num">{money0(sum(onHand))}</span></div>
+        <button type="button" className="kpi kpi-btn" onClick={() => go('orders')}><span className="label">Work on hand</span><b className="num">{onHand.length}</b><span className="sub num">{money0(sum(onHand))}</span></button>
         <div className="kpi"><span className="label">Invoiced, unpaid</span><b className="num">{owed.length}</b><span className="sub num">{money0(sum(owed))}</span></div>
       </div>
       {tot > 0 && (
@@ -62,8 +62,8 @@ export default function Dashboard({ go }) {
           </div>
         </div>
       )}
-      <div className="block-head"><h3>Open jobs</h3><button className="btn small" type="button" onClick={() => go('jobs')}>All jobs</button></div>
-      <JobsTable jobs={jobs.filter((j) => !['Paid', 'Declined'].includes(j.status))} go={go} />
+      <div className="block-head"><h3>Quotes waiting for the customer</h3><button className="btn small" type="button" onClick={() => go('jobs')}>All quotes</button></div>
+      <JobsTable jobs={jobs.filter((j) => ['Draft', 'Quote sent'].includes(j.status))} go={go} />
     </>
   )
 }

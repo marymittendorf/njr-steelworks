@@ -44,7 +44,8 @@ export const TEMPLATE_FOR_REQUEST = {
   'Custom fabrication': 'custom',
 }
 
-export const STATUSES = ['Draft', 'Quote sent', 'Accepted', 'In workshop', 'Ready for collection', 'Invoiced', 'Paid', 'Declined']
+// Job stage (where the work is). Payment is tracked separately: see src/orders.js.
+export const STATUSES = ['Draft', 'Quote sent', 'Accepted', 'In workshop', 'Ready', 'Delivered', 'Declined']
 
 export const n = (v) => {
   const x = parseFloat(v)

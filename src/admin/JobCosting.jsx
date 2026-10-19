@@ -4,8 +4,9 @@ import { calc, fromTemplate, matLine, n, ratesFrom, STATUSES, TEMPLATES } from '
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
+import { JOB_TYPES, PAYMENT_STATUSES, ensureStockItem, stampsFor } from '../orders.js'
 
-const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'notes', 'request_id', 'mats', 'labour', 'extras', 'rates']
+const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'payment_status', 'notes', 'request_id', 'mats', 'labour', 'extras', 'rates']
 
 function blankJob(settings, prices) {
   return {
@@ -61,12 +62,14 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
     payload.mats = payload.mats.map((m) => ({ ...m, qty: n(m.qty), cost: n(m.cost) }))
     payload.labour = payload.labour.map((l) => ({ ...l, hours: n(l.hours) }))
     payload.extras = payload.extras.map((x) => ({ ...x, amount: n(x.amount) }))
+    Object.assign(payload, stampsFor(job, payload.status)) // date-stamp the order timeline
     let res
     if (job.id) res = await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', job.id).select().single()
     else res = await supabase.from('jobs').insert(payload).select().single()
     setBusy(false)
     if (res.error) { setError(res.error); return null }
     if (!job.id && job.request_id) await supabase.from('requests').update({ status: 'Quoted' }).eq('id', job.request_id)
+    await ensureStockItem(res.data)
     setJob(res.data)
     toast('Saved ' + res.data.quote_no)
     return res.data
@@ -108,8 +111,13 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
             <div className="field"><label htmlFor="c-phone">Cell</label><input id="c-phone" value={job.phone || ''} onChange={(e) => upd({ phone: e.target.value })} /></div>
             <div className="field full"><label htmlFor="c-title">Job description (shown on quote)</label><input id="c-title" value={job.title} onChange={(e) => upd({ title: e.target.value })} /></div>
             <div className="field"><label htmlFor="c-units">Number of identical units</label><input id="c-units" type="number" min="1" step="1" value={job.units} onChange={(e) => upd({ units: e.target.value })} /></div>
-            <div className="field"><label htmlFor="c-status">Status</label>
-              <select id="c-status" value={job.status} onChange={(e) => upd({ status: e.target.value })}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
+            <div className="field"><label htmlFor="c-status">Stage</label>
+              <select id="c-status" value={job.status} onChange={(e) => upd({ status: e.target.value })}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
+              <span className="hint">Accepted or later shows the job under Orders</span></div>
+            <div className="field"><label htmlFor="c-type">Job type</label>
+              <select id="c-type" value={job.job_type || 'Customer job'} onChange={(e) => upd({ job_type: e.target.value })}>{JOB_TYPES.map((s) => <option key={s}>{s}</option>)}</select></div>
+            <div className="field"><label htmlFor="c-pay">Payment</label>
+              <select id="c-pay" value={job.payment_status || 'Awaiting deposit'} onChange={(e) => upd({ payment_status: e.target.value })}>{PAYMENT_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
             <div className="field"><label htmlFor="c-markup">Markup on cost (%)</label><input id="c-markup" type="number" step="0.5" value={job.markup} onChange={(e) => upd({ markup: e.target.value })} /></div>
             <div className="field" style={{ justifyContent: 'flex-end' }}>
               <label className="check" htmlFor="c-galv"><input id="c-galv" type="checkbox" checked={job.galv} onChange={(e) => upd({ galv: e.target.checked })} /> Hot-dip galvanise (R{r.galv}/kg)</label></div>
@@ -198,7 +206,7 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
           {t.u > 1 && <div className="row"><span>Per unit</span><b className="num">{money(t.total / t.u)}</b></div>}
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
-            <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {['Invoiced', 'Paid'].includes(job.status) ? 'invoice' : 'quote'}</button>
+            <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {['Invoiced', 'Paid'].includes(job.payment_status) ? 'invoice' : 'quote'}</button>
           </div>
           {error && <div style={{ padding: '0 18px 14px' }}><ErrorNote error={error} /></div>}
         </aside>
