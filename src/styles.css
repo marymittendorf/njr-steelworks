@@ -272,3 +272,10 @@ tr.clickable:hover td{background:var(--panel-2)}
   .modal{position:static;background:none;padding:0;overflow:visible}
   .doc{max-width:none;border-radius:0;padding:0}
 }
+
+/* AI instant estimate */
+.ai-est{border-color:var(--accent);max-width:900px;margin:0 auto}
+.ai-result{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.ai-result ul{margin:0;padding-left:20px}
+.ai-range{font-family:var(--f-display);font-size:clamp(2.2rem,6vw,3.4rem);color:var(--accent-hi);line-height:1.05}
+.ai-box{border:1px dashed var(--accent);border-radius:8px;padding:12px;margin:8px 0 12px;background:rgba(244,122,31,.05)}

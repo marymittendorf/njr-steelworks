@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n, computeFromPrices } from '../costing.js'
 import { money0 } from '../format.js'
@@ -39,6 +39,9 @@ export default function Settings({ settings, prices, syncFromPrices, toast }) {
     const patch = Object.fromEntries(RATE_FIELDS.map(([k]) => [k, n(f[k])]))
     patch.people = f.people.filter((p) => p.name.trim())
     patch.bank_details = f.bank_details
+    patch.ai_estimator_enabled = Boolean(f.ai_estimator_enabled)
+    patch.ai_daily_limit = Math.max(0, Math.round(n(f.ai_daily_limit)))
+    patch.ai_per_visitor_daily = Math.max(1, Math.round(n(f.ai_per_visitor_daily)))
     patch.from_prices = Object.fromEntries(SERVICES.map((s) => {
       const w = f.web[s.key]
       return [s.key, { label: w.label.trim() || s.defaultLabel, price: n(w.price) > 0 ? Math.round(n(w.price)) : null }]
@@ -72,6 +75,8 @@ export default function Settings({ settings, prices, syncFromPrices, toast }) {
         </tbody>
       </table></div>
 
+      <AiSettings f={f} setF={setF} />
+
       <div className="block-head"><h3>Costing rates</h3></div>
       <div className="card block"><div className="fgrid">
         {RATE_FIELDS.map(([k, label, hint]) => (
@@ -101,5 +106,30 @@ export default function Settings({ settings, prices, syncFromPrices, toast }) {
           placeholder={'Bank: …\nAccount name: NJR Steelworks\nAccount no: …\nBranch code: …'} />
       </div>
     </form>
+  )
+}
+
+// AI instant estimator: on/off, limits, and what it has cost (from ai_estimate_log).
+function AiSettings({ f, setF }) {
+  const [use, setUse] = useState(null)
+  useEffect(() => {
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()
+    supabase.from('ai_estimate_log').select('ok,cost_usd').gte('created_at', since)
+      .then(({ data }) => setUse({ count: data?.length || 0, ok: (data || []).filter((d) => d.ok).length, usd: (data || []).reduce((a, d) => a + n(d.cost_usd), 0) }))
+  }, [])
+  return (
+    <>
+      <div className="block-head"><h3>Instant estimate (AI)</h3><span className="hint">Visitors describe a job on the website and get a price range from your price list and rates</span></div>
+      <div className="card block"><div className="fgrid">
+        <div className="field"><span className="flabel">On the website</span>
+          <label className="check"><input type="checkbox" checked={Boolean(f.ai_estimator_enabled)} onChange={(e) => setF({ ...f, ai_estimator_enabled: e.target.checked })} /> Show "Instant estimate"</label>
+          <span className="hint">Needs the ANTHROPIC_API_KEY secret in Supabase first.</span></div>
+        <div className="field"><label htmlFor="ai-cap">Most estimates per day (whole site)</label><input id="ai-cap" type="number" min="0" step="1" value={f.ai_daily_limit} onChange={(e) => setF({ ...f, ai_daily_limit: e.target.value })} /></div>
+        <div className="field"><label htmlFor="ai-per">Most per visitor per day</label><input id="ai-per" type="number" min="1" step="1" value={f.ai_per_visitor_daily} onChange={(e) => setF({ ...f, ai_per_visitor_daily: e.target.value })} /></div>
+        <div className="field"><span className="flabel">Last 30 days</span>
+          <span className="num">{use ? `${use.count} estimate${use.count === 1 ? '' : 's'} (${use.ok} priced) · about $${use.usd.toFixed(2)}` : '…'}</span>
+          <span className="hint">Usually R1 to R2 per estimate.</span></div>
+      </div></div>
+    </>
   )
 }

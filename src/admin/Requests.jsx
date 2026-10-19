@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { fromTemplate, ratesFrom, TEMPLATE_FOR_REQUEST } from '../costing.js'
-import { shortDate, waNumber } from '../format.js'
+import { money0, shortDate, waNumber } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 
 export default function Requests({ settings, prices, go, refreshCount }) {
@@ -26,12 +26,15 @@ export default function Requests({ settings, prices, go, refreshCount }) {
 
   function costIt(r) {
     const tpl = TEMPLATE_FOR_REQUEST[r.type] || 'custom'
+    const ai = r.ai_estimate && !r.ai_estimate.failed ? r.ai_estimate : null
     go('cost', {
       draft: {
         ...fromTemplate(tpl, prices.filter((p) => p.active)),
         customer: r.name, phone: r.phone, email: r.email || '', notes: r.detail || '',
         units: 1, galv: false, markup: settings.markup, status: 'Draft', request_id: r.id,
         rates: ratesFrom(settings),
+        // Start from the AI's bill of materials when there is one (prices locked at today's list).
+        ...(ai ? { title: ai.title, units: ai.units, galv: ai.galv, mats: ai.mats, labour: ai.labour, extras: ai.extras } : {}),
       },
     })
   }
@@ -58,7 +61,15 @@ export default function Requests({ settings, prices, go, refreshCount }) {
             <a className="btn small ghost" href={`https://wa.me/${waNumber(r.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
             {r.email && <a href={`mailto:${r.email}`}>{r.email}</a>}
           </div>
-          <div className="label" style={{ color: 'var(--accent-hi)' }}>{r.type} · {r.timing}</div>
+          <div className="label" style={{ color: 'var(--accent-hi)' }}>{r.type} · {r.timing}{r.source === 'AI estimate' && ' · from the instant estimator'}</div>
+          {r.ai_estimate && (r.ai_estimate.failed
+            ? <div className="ai-box"><b>The estimator couldn't price this.</b>{r.ai_estimate.questions?.length > 0 && <> It would ask: {r.ai_estimate.questions.join(' ')}</>}</div>
+            : <div className="ai-box">
+                <div><b>Customer was shown {money0(r.ai_estimate.low)} – {money0(r.ai_estimate.high)}</b> <span className="hint">(worked out at {money0(r.ai_estimate.total)}, {r.ai_estimate.confidence} confidence)</span></div>
+                <div className="hint">{r.ai_estimate.title}{r.ai_estimate.units > 1 ? ` × ${r.ai_estimate.units}` : ''} · {r.ai_estimate.mats.length} materials · {r.ai_estimate.labour.reduce((a, l) => a + l.hours, 0)} h labour per unit</div>
+                {r.ai_estimate.assumptions?.length > 0 && <div className="hint">Assumed: {r.ai_estimate.assumptions.join(' · ')}</div>}
+                {r.ai_estimate.questions?.length > 0 && <div className="hint">Ask: {r.ai_estimate.questions.join(' · ')}</div>}
+              </div>)}
           <p style={{ margin: '6px 0 12px', whiteSpace: 'pre-line' }}>{r.detail || <span className="hint">No details given.</span>}</p>
           {r.photos.length > 0 && (photoUrls[r.id]
             ? <div className="thumbs">{photoUrls[r.id].map((u) => <a key={u} href={u} target="_blank" rel="noopener noreferrer"><img src={u} alt="Customer photo" /></a>)}</div>
