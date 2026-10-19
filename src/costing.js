@@ -11,10 +11,16 @@ export const TEMPLATES = {
     mats: [['sq50', 5], ['sq40', 4], ['rhs76', 2], ['sh2', 2], ['mesh', 4], ['ang40', 2], ['axle', 1], ['spring', 1], ['wheel', 2], ['coupler', 1], ['jockey', 1], ['lights', 1], ['guards', 1], ['reflect', 1], ['paint', 1]],
     labour: [['Cut & prep steel', 4], ['Chassis & body welding', 12], ['Cage & mesh', 5], ['Wiring & lights', 2], ['Grind, prime & paint', 3]],
   },
+  // 'skip' is the smallest new skip; the website shows its price as "from".
   skip: {
-    title: "6 m³ builder's skip, new build",
-    mats: [['sh45', 7], ['ch100', 2], ['ang50', 4], ['fb50', 2], ['lugs', 1], ['paint', 2]],
-    labour: [['Cut & prep plate', 6], ['Body welding', 16], ['Lugs & reinforcing', 4], ['Grind, prime & paint', 4]],
+    title: "2 m³ builder's skip, new build",
+    mats: [['sh45', 3], ['ch100', 1], ['ang50', 2], ['fb50', 1], ['lugs', 1], ['paint', 1]],
+    labour: [['Cut & prep plate', 3], ['Body welding', 8], ['Lugs & reinforcing', 3], ['Grind, prime & paint', 2]],
+  },
+  skip3: {
+    title: "3 m³ builder's skip, new build",
+    mats: [['sh45', 4], ['ch100', 1], ['ang50', 3], ['fb50', 2], ['lugs', 1], ['paint', 1]],
+    labour: [['Cut & prep plate', 4], ['Body welding', 10], ['Lugs & reinforcing', 3], ['Grind, prime & paint', 3]],
   },
   skiprep: {
     title: 'Skip repair: replace floor',

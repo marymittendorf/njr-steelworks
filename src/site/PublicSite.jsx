@@ -4,7 +4,7 @@ import { money0, waNumber } from '../format.js'
 
 const SERVICES = [
   { tag: 'Trailers', h: 'Trailers', items: ['New builds to your size, 1.8 m to 4 m', 'Mesh cages, lids, ramps and tool boxes', 'Floors, axles, springs, wiring and lights', 'Galvanised or painted finish'], from: 'trailer', fromLabel: '3.0 m cage trailer from' },
-  { tag: 'Skips', h: 'Skips', items: ["New 4 m³ and 6 m³ builder's skips", 'Floor and side replacement', 'Lifting lugs and pins renewed', 'Fleet rates for skip hire companies'], from: 'skip', fromLabel: '6 m³ skip from' },
+  { tag: 'Skips', h: 'Skips', items: ["New 2 m³ and 3 m³ builder's skips", 'Floor and side replacement', 'Lifting lugs and pins renewed', 'Fleet rates for skip hire companies'], from: 'skip', fromLabel: '2 m³ skip from' },
   { tag: 'Custom work', h: 'Steel fabrication', items: ['Frames, racks and brackets', 'Farm and workshop equipment', 'One-off parts made to drawing or sample'], from: null },
   { tag: 'All steel work', h: 'Welding', items: ['MIG and arc welding in the workshop', 'Cracked frames and broken brackets', 'On-site welding by arrangement'], from: 'skiprep', fromLabel: 'Skip floor repair from' },
   { tag: 'General repairs', h: 'Gates & structures', items: ['Driveway and farm gates', 'Burglar bars and security frames', 'Carports, canopies and steel structures'], from: null },
@@ -12,7 +12,7 @@ const SERVICES = [
 
 const PLACEHOLDER_WORK = [
   { title: '3.0 m cage trailer', caption: 'Galvanised, 750 kg GVM' },
-  { title: '6 m³ skip', caption: '4.5 mm plate, new build' },
+  { title: '3 m³ skip', caption: '4.5 mm plate, new build' },
   { title: 'Skip floor', caption: 'Cut out and replaced' },
   { title: 'Gate & frame', caption: 'Custom farm work' },
 ]
