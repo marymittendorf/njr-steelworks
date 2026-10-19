@@ -37,15 +37,15 @@ Every saved quote keeps its own copy of the steel prices and rates it was costed
 so changing the price list never changes a quote that was already sent. The costing
 screen shows a "Use current prices" button when a quote is out of date.
 
-## Adding staff
+## Staff logins
 
-1. Supabase dashboard → Authentication → Users → **Add user** (email + password, tick auto-confirm).
-2. Then run this in the SQL editor, with the user's email and name:
+Staff sign in with a **username** and password. Behind the scenes the login is
+`<username>@njrsteelworks.co.za`; nobody has to type that part.
 
-```sql
-insert into public.staff (user_id, name, role)
-select id, 'Jeanette', 'owner' from auth.users where email = 'their@email.com';
-```
+Owners (Jeanette, Nico) manage logins in the back end under **Staff**: add a person,
+set a new password, or remove someone. That page calls the `manage-staff` Edge Function
+(`supabase/functions/manage-staff`), which checks the caller is an owner before doing anything.
+There is no "email me a reset link"; an owner sets a new password instead.
 
 A signed-in account that isn't in `staff` sees "No staff access" and can't read anything.
 

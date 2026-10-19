@@ -10,6 +10,7 @@ import Expenses from './Expenses.jsx'
 import Prices from './Prices.jsx'
 import Settings from './Settings.jsx'
 import Gallery from './Gallery.jsx'
+import Staff from './Staff.jsx'
 import { Loading } from './ui.jsx'
 
 export default function AdminApp() {
@@ -35,6 +36,7 @@ const PAGES = [
   ['prices', 'Steel price list'],
   ['gallery', 'Website photos'],
   ['settings', 'Rates & settings'],
+  ['staff', 'Staff'], // owners only
 ]
 
 const pageFromHash = () => {
@@ -83,7 +85,7 @@ function StaffShell({ session }) {
   }, [])
 
   useEffect(() => {
-    supabase.from('staff').select('name,role').eq('user_id', session.user.id).maybeSingle()
+    supabase.from('staff').select('*').eq('user_id', session.user.id).maybeSingle()
       .then(({ data }) => setStaff(data))
     loadSettings()
     loadPrices()
@@ -126,7 +128,7 @@ function StaffShell({ session }) {
     <div className="admin">
       <nav className="side" aria-label="Back end">
         <a className="brand" href="/"><img src="/logo.webp" alt="" /><b>NJR <span>ADMIN</span></b></a>
-        {PAGES.map(([k, label]) => (
+        {PAGES.filter(([k]) => k !== 'staff' || staff.role === 'owner').map(([k, label]) => (
           <button key={k} type="button" aria-current={page === k ? 'page' : undefined}
             onClick={() => { if (!(k === 'cost' && page === 'cost')) go(k) }}>
             {label}{k === 'requests' && newCount > 0 && <span className="count">{newCount}</span>}
@@ -147,6 +149,7 @@ function StaffShell({ session }) {
             {page === 'expenses' && <Expenses {...props} />}
             {page === 'prices' && <Prices {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}
             {page === 'gallery' && <Gallery {...props} />}
+            {page === 'staff' && <Staff {...props} me={staff} />}
             {page === 'settings' && <Settings {...props} syncFromPrices={syncFromPrices} />}
           </>
         )}

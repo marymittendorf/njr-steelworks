@@ -1,24 +1,27 @@
 import { useState } from 'react'
 import { supabase } from '../supabase.js'
 
+// Staff type a username; the login behind it is <username>@njrsteelworks.co.za.
+export const LOGIN_DOMAIN = 'njrsteelworks.co.za'
+const toLogin = (username) => {
+  const u = username.trim().toLowerCase()
+  return u.includes('@') ? u : `${u}@${LOGIN_DOMAIN}`
+}
+
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [msg, setMsg] = useState({ error: '', info: '' })
+  const [error, setError] = useState('')
+  const [showHelp, setShowHelp] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function signIn(e) {
     e.preventDefault()
+    if (!username.trim() || !password) { setError('Type your username and password.'); return }
     setBusy(true)
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    const { error } = await supabase.auth.signInWithPassword({ email: toLogin(username), password })
     setBusy(false)
-    if (error) setMsg({ error: 'Email or password is wrong. Try again, or reset your password.', info: '' })
-  }
-
-  async function reset() {
-    if (!email.trim()) { setMsg({ error: 'Type your email first, then click reset.', info: '' }); return }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + '/admin' })
-    setMsg(error ? { error: 'Could not send the reset email. Try again in a minute.', info: '' } : { error: '', info: 'Check your email for a reset link.' })
+    if (error) setError('Username or password is wrong. Check them and try again.')
   }
 
   return (
@@ -26,14 +29,14 @@ export default function Login() {
       <form className="card" onSubmit={signIn}>
         <img src="/logo.webp" alt="NJR Steelworks" />
         <h2 style={{ textTransform: 'uppercase', textAlign: 'center' }}>Staff sign in</h2>
-        <div className="field"><label htmlFor="l-email">Email</label>
-          <input id="l-email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+        <div className="field"><label htmlFor="l-user">Username</label>
+          <input id="l-user" autoComplete="username" autoCapitalize="none" spellCheck="false" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="e.g. jeanette" /></div>
         <div className="field"><label htmlFor="l-pass">Password</label>
-          <input id="l-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
-        {msg.error && <div className="errmsg">{msg.error}</div>}
-        {msg.info && <div className="okmsg">{msg.info}</div>}
+          <input id="l-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+        {error && <div className="errmsg">{error}</div>}
         <button className="btn primary" type="submit" disabled={busy} style={{ justifyContent: 'center' }}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <button className="linkbtn" type="button" onClick={reset}>Forgot password?</button>
+        <button className="linkbtn" type="button" onClick={() => setShowHelp(!showHelp)}>Forgot your password?</button>
+        {showHelp && <p className="hint" style={{ margin: 0 }}>Ask Jeanette or Nico to set a new one for you under Staff in the back end.</p>}
         <a className="hint" href="/" style={{ textAlign: 'center' }}>Back to the website</a>
       </form>
     </div>
