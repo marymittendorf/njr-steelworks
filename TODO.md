@@ -40,6 +40,26 @@ Model: the DF Elements shop admin → Q and A.
 - Staff add, edit, reorder and hide questions in the back end; no coding needed
 - Link it from the menu and from the quote form ("Check our Q & A")
 
+## 6. Order tracker, deliveries and stock (from Forever Planks)
+Model: github.com/marymittendorf/forever-planks-orders (read 19 Oct 2026; plain JS + Supabase).
+Bring into the NJR back end, built in NJR's React app rather than copied as-is:
+- **Order tracker** on Quotes & jobs: status cards with counts (Not started, In workshop,
+  Ready, Delivered/Collected), status tabs, search, one-click "Start production",
+  "Mark ready", "Mark delivered/collected" buttons
+- **Job timeline**: date stamped when production starts, when it's ready and when it's
+  delivered (Forever Planks: production_started_at, ready_at, delivered_at)
+- **Payment status** per job (Awaiting payment, Deposit paid, Paid), shown as a tag
+- **Job type**: Customer job or Built for stock. Finished stock builds move to **Stock**
+  automatically (e.g. 3 m trailers or 2 m³ skips built ahead and kept in the yard), and are
+  marked sold when a customer buys one
+- **Deliveries calendar**: schedule a delivery or collection for a job (date, time, address,
+  notes, status), shown by day and month
+- **Signature on collection/delivery**: customer signs on the phone/tablet (Forever Planks
+  does this for plank loans); printed onto the delivery note
+- Accepted quotes become orders automatically, so nothing is captured twice
+Not carried over: the invoice PDF reader (tuned to Forever Planks' accounting template;
+NJR makes its own invoices), Stockists and Loan of planks.
+
 ## 5. Settings: business and bank details
 Model: the DF Elements shop admin → Settings (screenshot 19 Oct 2026).
 - **Bank details for EFT** as separate boxes (bank, account name, account number, branch code)
