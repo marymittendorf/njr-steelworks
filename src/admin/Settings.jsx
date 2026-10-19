@@ -84,14 +84,15 @@ export default function Settings({ settings, prices, syncFromPrices, toast }) {
       <div className="block-head"><h3>Contact people</h3><span className="hint">Shown on the website and on quotes</span></div>
       <div className="card block">
         {f.people.map((p, i) => (
-          <div className="fgrid" key={i} style={{ gridTemplateColumns: '1fr 1fr 1fr auto', marginBottom: 10, alignItems: 'end' }}>
+          <div className="fgrid people-row" key={i}>
             <div className="field"><label htmlFor={`p-n${i}`}>Name</label><input id={`p-n${i}`} value={p.name} onChange={(e) => setPerson(i, 'name', e.target.value)} /></div>
             <div className="field"><label htmlFor={`p-r${i}`}>Role</label><input id={`p-r${i}`} value={p.role} onChange={(e) => setPerson(i, 'role', e.target.value)} /></div>
             <div className="field"><label htmlFor={`p-p${i}`}>Cell</label><input id={`p-p${i}`} value={p.phone} onChange={(e) => setPerson(i, 'phone', e.target.value)} /></div>
+            <div className="field"><label htmlFor={`p-e${i}`}>Email</label><input id={`p-e${i}`} type="email" value={p.email || ''} onChange={(e) => setPerson(i, 'email', e.target.value)} /></div>
             <button className="x" type="button" aria-label={`Remove ${p.name}`} onClick={() => setF({ ...f, people: f.people.filter((_, j) => j !== i) })}>×</button>
           </div>
         ))}
-        <button className="btn small" type="button" onClick={() => setF({ ...f, people: [...f.people, { name: '', role: '', phone: '' }] })}>Add person</button>
+        <button className="btn small" type="button" onClick={() => setF({ ...f, people: [...f.people, { name: '', role: '', phone: '', email: '' }] })}>Add person</button>
       </div>
 
       <div className="block-head"><h3>Banking details</h3><span className="hint">Printed at the bottom of quotes and invoices</span></div>

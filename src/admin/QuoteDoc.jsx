@@ -30,7 +30,7 @@ export default function QuoteDoc({ job, settings, onClose }) {
             <div>
               <b style={{ fontFamily: 'var(--f-display)', fontSize: '1.6rem' }}>NJR STEELWORKS</b>
               <div className="muted">Fabrication · Repairs · Custom work</div>
-              {settings.people.map((p) => <div className="muted" key={p.name}>{p.name} {p.phone}</div>)}
+              {settings.people.map((p) => <div className="muted" key={p.name}>{p.name} {p.phone}{p.email && ` · ${p.email}`}</div>)}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>

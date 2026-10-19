@@ -122,7 +122,7 @@ export default function PublicSite() {
         <div className="wrap quote-grid">
           <QuoteForm />
           <aside className="card" id="contact">
-            <h3 style={{ fontSize: '1.8rem', textTransform: 'uppercase' }}>Call or WhatsApp</h3>
+            <h3 style={{ fontSize: '1.8rem', textTransform: 'uppercase' }}>Call, WhatsApp or email</h3>
             {info.people.map((p) => (
               <div className="contact-person" key={p.name}>
                 <b>{p.name}</b><span className="hint">{p.role}</span>
@@ -130,6 +130,7 @@ export default function PublicSite() {
                   <a className="num" href={`tel:${p.phone.replace(/\s/g, '')}`}>{p.phone}</a>
                   <a className="btn small ghost" href={`https://wa.me/${waNumber(p.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
                 </div>
+                {p.email && <a className="email" href={`mailto:${p.email}`}>{p.email}</a>}
               </div>
             ))}
             <p style={{ marginTop: 12, marginBottom: 4 }}><b>Workshop in George, Western Cape</b></p><p className="hint" style={{ marginTop: 0 }}>Mon–Fri 07:30–17:00, Sat 08:00–12:00.<br />Street address shared when you book.</p>
