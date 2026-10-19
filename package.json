@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/costing.test.js src/orderRules.test.js src/docParse.test.js"
+    "test": "node --test src/costing.test.js src/orderRules.test.js src/docParse.test.js src/calculator.test.js src/functionsInSync.test.js",
+    "sync-functions": "node scripts/sync-functions.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

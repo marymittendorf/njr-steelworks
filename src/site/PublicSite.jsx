@@ -3,6 +3,7 @@ import { supabase } from '../supabase.js'
 import { money0, waNumber } from '../format.js'
 import { SERVICES } from '../services.js'
 import AiEstimate from './AiEstimate.jsx'
+import InstantCalc from './InstantCalc.jsx'
 
 // Free Unsplash stock photos (Unsplash License), shown under "Gallery" until
 // staff upload real job photos under Website photos; then the section becomes "Recent work".
@@ -40,7 +41,7 @@ export default function PublicSite() {
             <a href="#process">How it works</a>
             <a href="#work">Gallery</a>
             <a href="#contact">Contact</a>
-            {info.ai_estimator && <a href="#estimate">Instant estimate</a>}
+            <a href="#price">Instant price</a>
             <a href="#quote" className="cta">Get a quote</a>
           </nav>
         </div>
@@ -120,11 +121,12 @@ export default function PublicSite() {
         </div>
       </section>
 
-      {info.ai_estimator && (
-        <section className="band">
-          <div className="wrap"><AiEstimate /></div>
-        </section>
-      )}
+      <section className="band">
+        <div className="wrap" style={{ display: 'grid', gap: 24 }}>
+          <InstantCalc />
+          {info.ai_estimator && <AiEstimate />}
+        </div>
+      </section>
 
       <section className="band" id="quote">
         <div className="wrap quote-grid">

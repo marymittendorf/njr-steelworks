@@ -98,7 +98,9 @@ Deno.serve(async (req) => {
 
   const { data: s } = await db.from('settings').select('*').eq('id', 1).single()
   if (!s?.ai_estimator_enabled || !Deno.env.get('ANTHROPIC_API_KEY')) {
-    return json({ error: 'Instant estimates are switched off at the moment. Send a quote request instead.', off: true }, 503)
+    // reason is for staff troubleshooting only; the website just shows the message.
+    return json({ error: 'Instant estimates are switched off at the moment. Send a quote request instead.', off: true,
+      reason: !s?.ai_estimator_enabled ? 'switched_off' : 'no_api_key' }, 503)
   }
 
   // Limits: whole site per day, and per visitor per day (by hashed IP, never stored raw).

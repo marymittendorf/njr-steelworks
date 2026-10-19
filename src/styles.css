@@ -279,3 +279,14 @@ tr.clickable:hover td{background:var(--panel-2)}
 .ai-result ul{margin:0;padding-left:20px}
 .ai-range{font-family:var(--f-display);font-size:clamp(2.2rem,6vw,3.4rem);color:var(--accent-hi);line-height:1.05}
 .ai-box{border:1px dashed var(--accent);border-radius:8px;padding:12px;margin:8px 0 12px;background:rgba(244,122,31,.05)}
+
+/* Instant price calculator */
+.calc{max-width:900px;margin:0 auto;width:100%;border-color:var(--accent)}
+.seg-tabs{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg-tabs button{background:transparent;border:0;padding:8px 16px;cursor:pointer;font-family:var(--f-label);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.seg-tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.calc-grid{grid-template-columns:repeat(3,1fr)}
+.calc-send{border-top:1px dashed var(--line);margin-top:10px;padding-top:12px;width:100%}
+input[type=range]{padding:0;accent-color:var(--accent)}
+@media (max-width:760px){.calc-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.calc-grid{grid-template-columns:1fr}}

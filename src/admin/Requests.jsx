@@ -61,11 +61,11 @@ export default function Requests({ settings, prices, go, refreshCount }) {
             <a className="btn small ghost" href={`https://wa.me/${waNumber(r.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>
             {r.email && <a href={`mailto:${r.email}`}>{r.email}</a>}
           </div>
-          <div className="label" style={{ color: 'var(--accent-hi)' }}>{r.type} · {r.timing}{r.source === 'AI estimate' && ' · from the instant estimator'}</div>
+          <div className="label" style={{ color: 'var(--accent-hi)' }}>{r.type} · {r.timing}{r.source === 'AI estimate' && ' · from the AI estimator'}{r.source === 'Calculator' && ' · from the instant price calculator'}</div>
           {r.ai_estimate && (r.ai_estimate.failed
             ? <div className="ai-box"><b>The estimator couldn't price this.</b>{r.ai_estimate.questions?.length > 0 && <> It would ask: {r.ai_estimate.questions.join(' ')}</>}</div>
             : <div className="ai-box">
-                <div><b>Customer was shown {money0(r.ai_estimate.low)} – {money0(r.ai_estimate.high)}</b> <span className="hint">(worked out at {money0(r.ai_estimate.total)}, {r.ai_estimate.confidence} confidence)</span></div>
+                <div><b>Customer was shown {money0(r.ai_estimate.low)} – {money0(r.ai_estimate.high)}</b> <span className="hint">(worked out at {money0(r.ai_estimate.total)}{r.ai_estimate.confidence !== 'calculator' && `, ${r.ai_estimate.confidence} confidence`})</span></div>
                 <div className="hint">{r.ai_estimate.title}{r.ai_estimate.units > 1 ? ` × ${r.ai_estimate.units}` : ''} · {r.ai_estimate.mats.length} materials · {r.ai_estimate.labour.reduce((a, l) => a + l.hours, 0)} h labour per unit</div>
                 {r.ai_estimate.assumptions?.length > 0 && <div className="hint">Assumed: {r.ai_estimate.assumptions.join(' · ')}</div>}
                 {r.ai_estimate.questions?.length > 0 && <div className="hint">Ask: {r.ai_estimate.questions.join(' · ')}</div>}
