@@ -44,7 +44,7 @@ export default function Gallery({ toast }) {
 
   return (
     <>
-      <div className="pagehead"><div><h1>Website photos</h1><p>Photos in the "Recent work" section of the website. The first 8 visible photos are shown.</p></div></div>
+      <div className="pagehead"><div><h1>Website photos</h1><p>Your own job photos for the website. Once at least one is visible, they replace the stock photos and the section is called "Recent work". The first 8 visible photos are shown.</p></div></div>
       <ErrorNote error={error} />
       <form className="card block" onSubmit={upload}>
         <div className="fgrid">

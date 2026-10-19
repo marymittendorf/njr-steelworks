@@ -1,0 +1,7 @@
+Stock photos used in the website Gallery until NJR's own job photos are uploaded.
+All from Unsplash, free for commercial use under the Unsplash License (https://unsplash.com/license).
+
+trailer.jpg      https://unsplash.com/photos/a-trailer-with-a-blue-tarp-on-the-back-of-it-3PiJKN2poPg
+skip.jpg         https://unsplash.com/photos/a-large-yellow-dump-truck-filled-with-dirt-OvyZ1a5JHzY  (image photo-1707062358488-41594b7d6290, cropped to leave out another company's lettering)
+fabrication.jpg  https://unsplash.com/photos/person-grinding-metal-beam-with-sparks-tXJhAFVOHVk
+gate.jpg         https://unsplash.com/photos/black-metal-gate-near-green-trees-during-daytime-6vVEd4LOxl0

@@ -3,11 +3,13 @@ import { supabase } from '../supabase.js'
 import { money0, waNumber } from '../format.js'
 import { SERVICES } from '../services.js'
 
-const PLACEHOLDER_WORK = [
-  { title: '3.0 m cage trailer', caption: 'Galvanised, 750 kg GVM' },
-  { title: '3 m³ skip', caption: '4.5 mm plate, new build' },
-  { title: 'Skip floor', caption: 'Cut out and replaced' },
-  { title: 'Gate & frame', caption: 'Custom farm work' },
+// Free Unsplash stock photos (Unsplash License), shown under "Gallery" until
+// staff upload real job photos under Website photos; then the section becomes "Recent work".
+const STOCK_TILES = [
+  { title: 'Trailers', caption: 'New builds and repairs', src: '/stock/trailer.jpg' },
+  { title: 'Skips', caption: '2 m³ and 3 m³, built and repaired', src: '/stock/skip.jpg' },
+  { title: 'Fabrication & welding', caption: 'Custom steel work', src: '/stock/fabrication.jpg' },
+  { title: 'Gates & structures', caption: 'Made to measure', src: '/stock/gate.jpg' },
 ]
 
 const TYPES = ['New trailer', 'Trailer repair', 'New skip', 'Skip repair', 'Custom fabrication']
@@ -35,7 +37,7 @@ export default function PublicSite() {
           <nav className="site-nav" aria-label="Main">
             <a href="#services">Services</a>
             <a href="#process">How it works</a>
-            <a href="#work">Our work</a>
+            <a href="#work">Gallery</a>
             <a href="#contact">Contact</a>
             <a href="#quote" className="cta">Get a quote</a>
           </nav>
@@ -104,11 +106,11 @@ export default function PublicSite() {
 
       <section className="band" id="work">
         <div className="wrap">
-          <div className="band-head"><h2>Recent work</h2></div>
+          <div className="band-head"><h2>{work.length ? 'Recent work' : 'Gallery'}</h2></div>
           <div className="gallery">
-            {(work.length ? work : PLACEHOLDER_WORK).map((w, i) => (
+            {(work.length ? work : STOCK_TILES).map((w, i) => (
               <div className="ph" key={w.id || i}>
-                {w.path && <img src={galleryUrl(w.path)} alt={w.title} loading="lazy" />}
+                <img src={w.path ? galleryUrl(w.path) : w.src} alt={w.path ? w.title : ''} loading="lazy" width="900" height="675" />
                 <span>{w.title}{w.caption && <small>{w.caption}</small>}</span>
               </div>
             ))}
