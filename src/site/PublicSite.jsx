@@ -47,9 +47,9 @@ export default function PublicSite() {
       <div className="hero" id="top">
         <div className="wrap">
           <div>
-            <div className="label" style={{ color: 'var(--accent-hi)' }}>Trailers · Skips · Fabrication · Welding · Gates</div>
+            <div className="label" style={{ color: 'var(--accent-hi)' }}>George, Western Cape · Trailers · Skips · Fabrication · Welding · Gates</div>
             <h1>Steel work that's <em>built to last</em></h1>
-            <p className="lead">NJR Steelworks builds and repairs utility trailers and builder's skips, and takes on custom fabrication, welding, gates and structures for farms, contractors and homeowners. You get a full written quote before any steel is cut.</p>
+            <p className="lead">NJR Steelworks builds and repairs utility trailers and builder's skips, and takes on custom fabrication, welding, gates and structures for farms, contractors and homeowners in George and across the Garden Route. You get a full written quote before any steel is cut.</p>
             <div className="actions">
               <a className="btn primary" href="#quote">Request a quote</a>
               <a className="btn" href="#services">See prices</a>
@@ -132,14 +132,14 @@ export default function PublicSite() {
                 </div>
               </div>
             ))}
-            <p className="hint" style={{ marginTop: 12 }}>Workshop: Mon–Fri 07:30–17:00, Sat 08:00–12:00.<br />Address shared on booking.</p>
+            <p style={{ marginTop: 12, marginBottom: 4 }}><b>Workshop in George, Western Cape</b></p><p className="hint" style={{ marginTop: 0 }}>Mon–Fri 07:30–17:00, Sat 08:00–12:00.<br />Street address shared when you book.</p>
           </aside>
         </div>
       </section>
 
       <footer className="site-foot">
         <div className="wrap">
-          <span>© {new Date().getFullYear()} NJR Steelworks · Fabrication · Repairs · Custom work · Skip repairs &amp; builds</span>
+          <span>© {new Date().getFullYear()} NJR Steelworks · George, Western Cape · Fabrication · Repairs · Custom work · Skip repairs &amp; builds</span>
           <span className="script">Built to Last</span>
           <a href="/admin">Staff login</a>
         </div>
