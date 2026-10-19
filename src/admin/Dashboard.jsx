@@ -27,7 +27,7 @@ export default function Dashboard({ go }) {
   const sum = (a) => a.reduce((s, x) => s + x.t.total, 0)
   const awaiting = rows.filter((x) => x.j.status === 'Quote sent')
   const onHand = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Accepted', 'In workshop', 'Ready'].includes(x.j.status))
-  const owed = rows.filter((x) => x.j.job_type !== 'Built for stock' && x.j.payment_status === 'Invoiced')
+  const owed = rows.filter((x) => x.j.invoice_no && x.j.payment_status !== 'Paid')
   const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Accepted', 'In workshop', 'Ready', 'Delivered'].includes(x.j.status))
   const avgMargin = won.length ? won.reduce((a, x) => a + x.t.margin, 0) / won.length : 0
   const agg = won.reduce((a, { t }) => ({

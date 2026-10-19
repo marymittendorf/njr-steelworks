@@ -9,6 +9,7 @@ import Orders from './Orders.jsx'
 import Stock from './Stock.jsx'
 import Deliveries from './Deliveries.jsx'
 import Expenses from './Expenses.jsx'
+import PettyCash from './PettyCash.jsx'
 import Prices from './Prices.jsx'
 import Settings from './Settings.jsx'
 import Gallery from './Gallery.jsx'
@@ -38,6 +39,7 @@ const PAGES = [
   ['stock', 'Stock'],
   ['cost', 'Job costing'],
   ['expenses', 'Expenses'],
+  ['petty', 'Petty cash'],
   ['prices', 'Steel price list'],
   ['gallery', 'Website photos'],
   ['settings', 'Rates & settings'],
@@ -154,6 +156,7 @@ function StaffShell({ session }) {
             {page === 'stock' && <Stock {...props} />}
             {page === 'cost' && <JobCosting key={costTarget?.nonce || 'new'} target={costTarget} {...props} />}
             {page === 'expenses' && <Expenses {...props} />}
+            {page === 'petty' && <PettyCash {...props} me={staff} />}
             {page === 'prices' && <Prices {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}
             {page === 'gallery' && <Gallery {...props} />}
             {page === 'staff' && <Staff {...props} me={staff} />}

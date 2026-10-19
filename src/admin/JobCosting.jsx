@@ -71,7 +71,7 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
     if (!job.id && job.request_id) await supabase.from('requests').update({ status: 'Quoted' }).eq('id', job.request_id)
     await ensureStockItem(res.data)
     setJob(res.data)
-    toast('Saved ' + res.data.quote_no)
+    toast(!job.invoice_no && res.data.invoice_no ? `Accepted: invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
     return res.data
   }
 
@@ -85,7 +85,8 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Job costing</h1><p>{job.quote_no || 'New quote, not saved yet'}</p></div>
+        <div><h1>Job costing</h1><p>{job.quote_no || 'New quote, not saved yet'}{job.invoice_no && ` · Invoice ${job.invoice_no}`}
+          {job.source_pdf_path && <> · <button className="linkbtn" type="button" onClick={async () => { const { data } = await supabase.storage.from('job-docs').createSignedUrl(job.source_pdf_path, 300); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }}>Original PDF quote</button></>}</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <select aria-label="Load a template" value="" onChange={(e) => { if (e.target.value) { upd(fromTemplate(e.target.value, active)); toast('Template loaded') } }}>
             <option value="">Load a template…</option>
@@ -206,7 +207,7 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
           {t.u > 1 && <div className="row"><span>Per unit</span><b className="num">{money(t.total / t.u)}</b></div>}
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
-            <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {['Invoiced', 'Paid'].includes(job.payment_status) ? 'invoice' : 'quote'}</button>
+            <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {job.invoice_no ? 'invoice' : 'quote'}</button>
           </div>
           {error && <div style={{ padding: '0 18px 14px' }}><ErrorNote error={error} /></div>}
         </aside>

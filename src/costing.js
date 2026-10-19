@@ -107,7 +107,9 @@ export function calc(job) {
 export function customerLines(job) {
   const t = calc(job)
   const factor = t.direct ? t.excl / t.direct : 1
-  const lines = [{ desc: `${job.title}: steel, hardware & fabrication`, qty: t.u, amount: (t.materials + t.labour + t.consumables) * factor }]
+  const lines = []
+  const made = t.materials + t.labour + t.consumables
+  if (made > 0) lines.push({ desc: `${job.title}: steel, hardware & fabrication`, qty: t.u, amount: made * factor })
   if (t.galv) lines.push({ desc: 'Hot-dip galvanising', qty: t.u, amount: t.galv * factor })
   for (const x of job.extras) lines.push({ desc: x.desc, qty: t.u, amount: n(x.amount) * t.u * factor })
   return lines

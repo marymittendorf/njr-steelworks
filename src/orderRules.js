@@ -2,7 +2,7 @@
 // Modelled on the Forever Planks order book: Accepted → In workshop → Ready → Delivered.
 
 export const ORDER_STAGES = ['Accepted', 'In workshop', 'Ready', 'Delivered']
-export const PAYMENT_STATUSES = ['Awaiting deposit', 'Deposit paid', 'Invoiced', 'Paid']
+export const PAYMENT_STATUSES = ['Awaiting deposit', 'Deposit paid', 'Paid']
 export const JOB_TYPES = ['Customer job', 'Built for stock']
 export const isOrder = (job) => ORDER_STAGES.includes(job.status)
 export const isStockBuild = (job) => job.job_type === 'Built for stock'

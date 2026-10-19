@@ -3,8 +3,8 @@ import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, shortDate } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
+import ExpenseForm, { CATEGORIES, uploadExpenseDoc } from './ExpenseForm.jsx'
 
-const CATEGORIES = ['Steel & materials', 'Consumables', 'Tools & equipment', 'Vehicle & fuel', 'Rent & utilities', 'Website & IT', 'Bank & payment fees', 'Insurance', 'Wages', 'Other']
 const today = () => new Date().toISOString().slice(0, 10)
 const month = (iso) => iso.slice(0, 7)
 const monthLabel = (ym) => new Date(ym + '-01').toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })
@@ -16,7 +16,6 @@ function nextDue(iso, frequency) {
   return d.toISOString().slice(0, 10)
 }
 
-const blankExpense = () => ({ paid_on: today(), supplier: '', description: '', category: 'Steel & materials', amount_excl: '', vatOn: true, vat: '', invoice_no: '', payment_method: 'EFT', notes: '' })
 const blankRecurring = () => ({ supplier: '', description: '', category: 'Rent & utilities', amount_excl: '', vat_rate: 15, frequency: 'monthly', next_due: today() })
 
 export default function Expenses({ toast }) {
@@ -24,10 +23,7 @@ export default function Expenses({ toast }) {
   const [recurring, setRecurring] = useState(null)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState(month(today()))
-  const [form, setForm] = useState(blankExpense)
-  const [file, setFile] = useState(null)
   const [rForm, setRForm] = useState(null)
-  const [busy, setBusy] = useState(false)
 
   const load = async () => {
     const [e, r] = await Promise.all([
@@ -47,33 +43,6 @@ export default function Expenses({ toast }) {
   const shown = expenses.filter((e) => filter === 'all' || month(e.paid_on) === filter)
   const sum = (k) => shown.reduce((a, e) => a + n(e[k]), 0)
   const byCat = Object.entries(shown.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + n(e.total) }), {})).sort((a, b) => b[1] - a[1])
-
-  async function uploadDoc(f) {
-    const ext = (f.name.split('.').pop() || 'pdf').toLowerCase()
-    const path = `${new Date().getFullYear()}/${crypto.randomUUID()}.${ext}`
-    const { error } = await supabase.storage.from('expense-docs').upload(path, f, { contentType: f.type })
-    if (error) throw error
-    return path
-  }
-
-  async function addExpense(e) {
-    e.preventDefault()
-    if (!form.supplier.trim() || !form.description.trim() || !(n(form.amount_excl) > 0)) {
-      setError('Add the supplier, what it was for, and the amount.'); return
-    }
-    setBusy(true)
-    try {
-      const file_path = file ? await uploadDoc(file) : null
-      const vat = form.vatOn ? (form.vat === '' ? n(form.amount_excl) * 0.15 : n(form.vat)) : 0
-      const { error } = await supabase.from('expenses').insert({
-        paid_on: form.paid_on, supplier: form.supplier.trim(), description: form.description.trim(), category: form.category,
-        amount_excl: n(form.amount_excl), vat: Math.round(vat * 100) / 100, invoice_no: form.invoice_no.trim() || null,
-        payment_method: form.payment_method || null, notes: form.notes.trim() || null, file_path,
-      })
-      if (error) throw error
-      setForm(blankExpense()); setFile(null); e.target.reset(); setError(null); toast('Expense recorded'); load()
-    } catch (err) { setError(err) } finally { setBusy(false) }
-  }
 
   async function recordPayment(r) {
     const vat = Math.round(n(r.amount_excl) * n(r.vat_rate)) / 100
@@ -106,14 +75,13 @@ export default function Expenses({ toast }) {
 
   async function attachDoc(exp, f) {
     try {
-      const file_path = await uploadDoc(f)
+      const file_path = await uploadExpenseDoc(f)
       const { error } = await supabase.from('expenses').update({ file_path }).eq('id', exp.id)
       if (error) throw error
       toast('Invoice attached'); load()
     } catch (err) { setError(err) }
   }
 
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
   const setR = (k) => (e) => setRForm({ ...rForm, [k]: e.target.value })
 
   return (
@@ -208,23 +176,7 @@ export default function Expenses({ toast }) {
         </table></div>
       </div>
 
-      <form className="card" onSubmit={addExpense}>
-        <div className="block-head"><h3>Record an expense</h3></div>
-        <div className="fgrid">
-          <div className="field"><label htmlFor="x-date">Date paid</label><input id="x-date" type="date" value={form.paid_on} onChange={set('paid_on')} /></div>
-          <div className="field"><label htmlFor="x-sup">Supplier</label><input id="x-sup" value={form.supplier} onChange={set('supplier')} placeholder="Macsteel, Builders, Afrox…" /></div>
-          <div className="field full"><label htmlFor="x-desc">What for</label><input id="x-desc" value={form.description} onChange={set('description')} placeholder="6 × 50×50 square tube for NJR-Q-0003" /></div>
-          <div className="field"><label htmlFor="x-cat">Category</label><select id="x-cat" value={form.category} onChange={set('category')}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></div>
-          <div className="field"><label htmlFor="x-amt">Amount excl. VAT (R)</label><input id="x-amt" type="number" min="0" step="0.01" value={form.amount_excl} onChange={set('amount_excl')} /></div>
-          <div className="field"><label className="check" htmlFor="x-vaton"><input id="x-vaton" type="checkbox" checked={form.vatOn} onChange={set('vatOn')} /> VAT charged</label>
-            {form.vatOn && <input aria-label="VAT amount" type="number" min="0" step="0.01" value={form.vat} onChange={set('vat')} placeholder={`15%: ${money(n(form.amount_excl) * 0.15)}`} />}</div>
-          <div className="field"><label htmlFor="x-pay">Paid by</label><select id="x-pay" value={form.payment_method} onChange={set('payment_method')}>{['EFT', 'Card', 'Cash', 'Paystack', 'Debit order'].map((p) => <option key={p}>{p}</option>)}</select></div>
-          <div className="field"><label htmlFor="x-inv">Invoice no. (optional)</label><input id="x-inv" value={form.invoice_no} onChange={set('invoice_no')} /></div>
-          <div className="field"><label htmlFor="x-file">Invoice or slip (optional)</label><input id="x-file" type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files[0] || null)} /></div>
-          <div className="field full"><label htmlFor="x-notes">Notes (optional)</label><input id="x-notes" value={form.notes} onChange={set('notes')} /></div>
-        </div>
-        <div style={{ marginTop: 14 }}><button className="btn primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Record expense'}</button></div>
-      </form>
+      <ExpenseForm toast={toast} onSaved={load} />
     </>
   )
 }

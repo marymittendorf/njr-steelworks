@@ -5,7 +5,7 @@ import { addDays, money, shortDate } from '../format.js'
 export default function QuoteDoc({ job, settings, onClose }) {
   const t = calc(job)
   const r = job.rates
-  const isInvoice = ['Invoiced', 'Paid'].includes(job.payment_status)
+  const isInvoice = Boolean(job.invoice_no) // an accepted quote becomes an invoice (numbered by the database)
   const lines = customerLines(job)
 
   useEffect(() => {
@@ -35,8 +35,9 @@ export default function QuoteDoc({ job, settings, onClose }) {
           </div>
           <div style={{ textAlign: 'right' }}>
             <h2>{isInvoice ? 'Tax invoice' : 'Quotation'}</h2>
-            <div className="num"><b>{job.quote_no}</b></div>
-            <div className="muted">Date {shortDate(job.quote_date)}</div>
+            <div className="num"><b>{isInvoice ? job.invoice_no : job.quote_no}</b></div>
+            <div className="muted">Date {shortDate(isInvoice ? job.invoice_date : job.quote_date)}</div>
+            {isInvoice && <div className="muted num">Quote ref {job.quote_no}</div>}
             {!isInvoice && <div className="muted">Valid until {shortDate(addDays(job.quote_date, r.validity))}</div>}
           </div>
         </div>
@@ -50,13 +51,16 @@ export default function QuoteDoc({ job, settings, onClose }) {
           <span>VAT {r.vat}%</span><span>{money(t.vat)}</span>
           <span className="grand">Total</span><span className="grand">{money(t.total)}</span>
           {!isInvoice && <><span className="muted">Deposit {r.deposit}% to book</span><span className="muted">{money(t.deposit)}</span></>}
+          {isInvoice && job.payment_status === 'Awaiting deposit' && <><span><b>Deposit due now ({r.deposit}%)</b></span><span><b>{money(t.deposit)}</b></span></>}
+          {isInvoice && job.payment_status === 'Deposit paid' && <><span className="muted">Deposit received</span><span className="muted">−{money(t.deposit)}</span><span><b>Balance due</b></span><span><b>{money(t.total - t.deposit)}</b></span></>}
+          {isInvoice && job.payment_status === 'Paid' && <><span><b>Paid in full</b></span><span><b>{money(0)} due</b></span></>}
         </div>
         <div className="terms">
           <b>Terms. </b>
           {isInvoice
-            ? 'Payment due on collection.'
+            ? (job.payment_status === 'Paid' ? 'Thank you, this invoice is paid in full.' : `A ${r.deposit}% deposit is due before work starts; the balance is due on collection or delivery.`)
             : `Quote valid for ${r.validity} days. Steel prices can change after that. Work is booked once the ${r.deposit}% deposit reflects; the balance is paid on collection.`}
-          {settings.bank_details && `\n\nBanking details:\n${settings.bank_details}\nReference: ${job.quote_no}`}
+          {settings.bank_details && `\n\nBanking details:\n${settings.bank_details}\nReference: ${isInvoice ? job.invoice_no : job.quote_no}`}
         </div>
       </div>
     </div>

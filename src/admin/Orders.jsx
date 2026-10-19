@@ -4,6 +4,7 @@ import { calc, fromTemplate, ratesFrom } from '../costing.js'
 import { ORDER_STAGES, PAYMENT_STATUSES, isStockBuild, moveJob, nextStep, shortStamp } from '../orders.js'
 import { money } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
+import ImportQuote from './ImportQuote.jsx'
 
 const TABS = [
   ['Accepted', 'Not started'],
@@ -20,6 +21,7 @@ export default function Orders({ settings, prices, go, toast }) {
   const [tab, setTab] = useState('Accepted')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(null)
+  const [importing, setImporting] = useState(false)
 
   const load = async () => {
     const [j, s] = await Promise.all([
@@ -36,7 +38,7 @@ export default function Orders({ settings, prices, go, toast }) {
   const needle = q.trim().toLowerCase()
   const shown = jobs
     .filter((j) => tab === 'all' || j.status === tab)
-    .filter((j) => !needle || [j.customer, j.quote_no, j.title, j.phone].some((v) => String(v || '').toLowerCase().includes(needle)))
+    .filter((j) => !needle || [j.customer, j.quote_no, j.invoice_no, j.title, j.phone].some((v) => String(v || '').toLowerCase().includes(needle)))
 
   async function advance(job, status, label) {
     setBusy(job.id)
@@ -69,8 +71,9 @@ export default function Orders({ settings, prices, go, toast }) {
       <div className="pagehead">
         <div><h1>Orders</h1><p>Accepted jobs from start to delivery. Double-click a row to open its costing.</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn primary" type="button" onClick={() => setImporting(true)}>Upload PDF quote</button>
           <button className="btn" type="button" onClick={newStockBuild}>Add stock build</button>
-          <button className="btn primary" type="button" onClick={() => go('jobs')}>Quotes</button>
+          <button className="btn" type="button" onClick={() => go('jobs')}>Quotes</button>
         </div>
       </div>
       <ErrorNote error={error} />
@@ -94,7 +97,7 @@ export default function Orders({ settings, prices, go, toast }) {
             </button>
           ))}
         </div>
-        <input aria-label="Search orders" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customer, quote no., job…" style={{ maxWidth: 300 }} />
+        <input aria-label="Search orders" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customer, invoice or quote no., job…" style={{ maxWidth: 300 }} />
       </div>
 
       {!shown.length ? (
@@ -120,7 +123,7 @@ export default function Orders({ settings, prices, go, toast }) {
                   <td>{stock ? <span className="hint">Stock build</span> : <>{j.customer}<div className="hint">{j.phone}</div></>}</td>
                   <td>
                     <b>{j.title}</b>{j.units > 1 && <span className="hint"> × {j.units}</span>}
-                    <div className="hint num">{j.quote_no}</div>
+                    <div className="hint num">{j.invoice_no ? `${j.invoice_no} · ${j.quote_no}` : j.quote_no}</div>
                   </td>
                   <td>
                     {stock ? <span className="hint">—</span> : (
@@ -140,6 +143,7 @@ export default function Orders({ settings, prices, go, toast }) {
           </tbody>
         </table></div>
       )}
+      {importing && <ImportQuote settings={settings} onClose={() => setImporting(false)} onCreated={(job) => { setImporting(false); setTab(job.status); toast(`Order created for ${job.customer}: invoice ${job.invoice_no}`); load() }} />}
       <p className="hint">Tip: double-click any row to open it. Moving a quote to Accepted on the costing screen puts it here.</p>
     </>
   )

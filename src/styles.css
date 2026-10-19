@@ -198,6 +198,7 @@ tr.clickable:hover td{background:var(--panel-2)}
 .bar i{display:block;height:100%}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .thumbs a img{width:110px;height:82px;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
+.slip-drop{border:1px dashed var(--accent);border-radius:8px;padding:14px;background:rgba(244,122,31,.05)}
 .gal-admin{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
 .gal-admin .card{padding:12px;display:flex;flex-direction:column;gap:8px}
 .gal-admin img{aspect-ratio:4/3;object-fit:cover;border-radius:4px;width:100%}
