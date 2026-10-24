@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, legacyToLine, n, ownLine, productLine, ratesFrom, STATUSES } from '../costing.js'
 import { money, money0 } from '../format.js'
-import { Loading, ErrorNote } from './ui.jsx'
+import { Loading, ErrorNote, Picker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import WorkOutPrice from './WorkOutPrice.jsx'
@@ -148,16 +148,18 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           <div className="block">
             <div className="block-head"><h3>On the quote</h3>
               {!adding && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className="btn small primary" type="button" disabled={!catalogue.length} onClick={() => setAdding({ id: catalogue[0]?.id, qty: 1, chosen: [] })}>Add product</button>
+                <button className="btn small primary" type="button" disabled={!catalogue.length} onClick={() => setAdding({ id: '', qty: 1, chosen: [] })}>Add product</button>
                 <button className="btn small" type="button" onClick={() => addLine(ownLine())}>Add your own line</button>
               </div>}</div>
             {adding && (() => {
               const prod = catalogue.find((x) => x.id === adding.id)
               return (
                 <div className="sugg" style={{ borderTop: 0 }}>
-                  <select aria-label="Product" value={adding.id} onChange={(e) => setAdding({ id: e.target.value, qty: adding.qty, chosen: [] })} style={{ flex: 1, minWidth: 200 }}>
-                    {catalogue.map((x) => <option key={x.id} value={x.id}>{x.name}{x.price_incl ? ` · ${money0(x.price_incl)}` : ' · no price yet'}</option>)}
-                  </select>
+                  <div style={{ flex: 1, minWidth: 240 }}><Picker items={catalogue} value={adding.id} autoFocus={!adding.id} label="Product"
+                    onChange={(id) => setAdding({ id, qty: adding.qty, chosen: [] })}
+                    search={(x) => `${x.name} ${x.category} ${x.spec || ''}`}
+                    sub={(x) => `${x.price_incl ? money0(x.price_incl) : 'no price yet'} · ${x.category}`}
+                    placeholder="Type to find a product…" empty={(t) => `No product matches "${t}". Set it up under Products, or add your own line.`} /></div>
                   <input className="qty num" aria-label="How many" type="number" min="1" step="1" value={adding.qty} onChange={(e) => setAdding({ ...adding, qty: e.target.value })} />
                   {(prod?.options || []).map((o) => (
                     <label key={o.name} className="check"><input type="checkbox" checked={adding.chosen.includes(o.name)} onChange={(e) => setAdding({ ...adding, chosen: e.target.checked ? [...adding.chosen, o.name] : adding.chosen.filter((c) => c !== o.name) })} /> {o.name} (+{money0(o.price_incl)})</label>

@@ -53,15 +53,23 @@ export const rowProps = (open) => ({ className: 'clickable', tabIndex: 0, onClic
 
 // Type-to-search part picker: type any part of the name (words in any order) and the list narrows.
 // Arrow keys + Enter, or click. Shows each part's cost so the right one is easy to spot.
-export function PartPicker({ prices, value, onChange, autoFocus, label = 'Part' }) {
+export function PartPicker({ prices, ...rest }) {
+  return <Picker items={prices} search={(p) => `${p.name} ${p.id} ${p.notes || ''}`}
+    sub={(p) => `${Number(p.cost) ? `R${Number(p.cost).toFixed(2)}` : 'no price'} · ${p.unit}`}
+    placeholder="Type to find a part…" empty={(t) => `No part matches "${t}". Add it under Stock first.`} {...rest} />
+}
+
+// The same search box for any list of {id, name, active}: products on a quote, parts, etc.
+export function Picker({ items, value, onChange, autoFocus, label = 'Part', search, sub, placeholder, empty }) {
+  const prices = items
   const current = prices.find((p) => p.id === value)
   const [text, setText] = useState(null) // null = not typing: show the chosen part's name
   const [hi, setHi] = useState(0)
   const listRef = useRef(null)
   const words = (text || '').toLowerCase().split(/\s+/).filter(Boolean)
   const matches = text === null ? [] : prices
-    .filter((p) => p.active || p.id === value)
-    .filter((p) => words.every((w) => `${p.name} ${p.id} ${p.notes || ''}`.toLowerCase().includes(w)))
+    .filter((p) => p.active !== false || p.id === value)
+    .filter((p) => words.every((w) => search(p).toLowerCase().includes(w)))
     .slice(0, 60)
 
   function pick(p) { onChange(p.id); setText(null) }
@@ -77,7 +85,7 @@ export function PartPicker({ prices, value, onChange, autoFocus, label = 'Part' 
     <div className="picker">
       <input aria-label={label} role="combobox" aria-expanded={text !== null} autoFocus={autoFocus} autoComplete="off"
         value={text ?? (current?.name || (value ? `${value} (not on the list)` : ''))}
-        placeholder="Type to find a part…"
+        placeholder={placeholder}
         onFocus={(e) => { setText(''); setHi(0); e.target.select() }}
         onChange={(e) => { setText(e.target.value); setHi(0) }}
         onBlur={() => setText(null)} onKeyDown={onKey} />
@@ -86,9 +94,9 @@ export function PartPicker({ prices, value, onChange, autoFocus, label = 'Part' 
           {matches.map((p, i) => (
             <li key={p.id} role="option" aria-selected={i === hi} className={i === hi ? 'on' : ''}
               onMouseDown={(e) => { e.preventDefault(); pick(p) }} onMouseEnter={() => setHi(i)}>
-              <span>{p.name}</span><span className="num hint">{Number(p.cost) ? `R${Number(p.cost).toFixed(2)}` : 'no price'} · {p.unit}</span>
+              <span>{p.name}</span><span className="num hint">{sub(p)}</span>
             </li>))}
-          {!matches.length && <li className="hint">No part matches "{text}". Add it under Stock first.</li>}
+          {!matches.length && <li className="hint">{empty(text)}</li>}
         </ul>
       )}
     </div>
