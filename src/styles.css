@@ -374,3 +374,9 @@ td .lnk,.lnk{color:var(--info)}
 .menu-more > div button:hover{background:var(--panel)}
 @media (max-width: 760px){.lh-tools input[type="search"]{width:100%}.lh-tools{width:100%}}
 @media (max-width:960px){.side{position:static;max-height:none}.side .grp{display:none}.side button{padding-left:12px}.sumstrip > div,.sumstrip > button{border-bottom:1px solid var(--line)}}
+.picker{position:relative;min-width:220px}
+.picker ul{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:40;max-height:280px;overflow-y:auto;margin:0;padding:4px;list-style:none;background:var(--panel-2);border:1px solid var(--accent);border-radius:6px;box-shadow:0 10px 24px rgba(0,0,0,.45)}
+.picker li{display:flex;justify-content:space-between;gap:12px;padding:7px 10px;border-radius:4px;cursor:pointer}
+.picker li.on{background:var(--accent);color:var(--accent-ink)}
+.picker li.on .hint{color:var(--accent-ink)}
+.tbl-wrap.open-ok{overflow:visible}

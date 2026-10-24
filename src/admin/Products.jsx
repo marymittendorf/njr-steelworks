@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n, productCost, suggestedPrice, marginAt, ratesFrom } from '../costing.js'
 import { money, money0 } from '../format.js'
-import { Loading, ErrorNote } from './ui.jsx'
+import { Loading, ErrorNote, PartPicker } from './ui.jsx'
 
 const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
 const CARD_FOR = { Skips: 'skip', Trailers: 'trailer', Gates: 'gates', Fabrication: 'fabrication', Welding: 'welding' }
@@ -116,16 +116,14 @@ function ProductEditor({ product, prices, settings, rates, me, toast, onClose, o
           <div className="field full"><label htmlFor="pr-spec">Notes for staff (optional)</label><input id="pr-spec" value={p.spec || ''} onChange={(e) => setP({ ...p, spec: e.target.value })} placeholder="e.g. 2 mm laser-cut steel from RT Laser, 4 lifting lugs" /></div>
         </div>
 
-        <div className="block-head" style={{ marginTop: 14 }}><h3>What goes into one</h3><button className="btn small" type="button" disabled={!active.length} onClick={() => setP({ ...p, mats: [...p.mats, { id: active[0]?.id, qty: 1 }] })}>Add part</button></div>
-        <div className="tbl-wrap"><table>
+        <div className="block-head" style={{ marginTop: 14 }}><h3>What goes into one</h3><button className="btn small" type="button" disabled={!active.length} onClick={() => setP({ ...p, mats: [...p.mats, { id: '', qty: 1 }] })}>Add part</button></div>
+        <div className="tbl-wrap open-ok"><table>
           <thead><tr><th>Part (from Stock)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
           <tbody>{p.mats.map((x, i) => {
             const pr = prices.find((y) => y.id === x.id)
             return (
               <tr key={i}>
-                <td><select aria-label="Part" value={x.id} onChange={(e) => setRow('mats', i, { id: e.target.value })}>
-                  {!pr && <option value={x.id}>{x.id} (not on the list)</option>}
-                  {prices.filter((y) => y.active || y.id === x.id).map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}</select></td>
+                <td><PartPicker prices={prices} value={x.id} onChange={(id) => setRow('mats', i, { id })} autoFocus={!x.id} /></td>
                 <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={x.qty} onChange={(e) => setRow('mats', i, { qty: e.target.value })} /></td>
                 <td className="r num" style={{ color: pr && !n(pr.cost) ? 'var(--warn)' : undefined }}>{pr ? (n(pr.cost) ? money(pr.cost) : 'no price') : '—'}</td>
                 <td className="r num">{money(n(x.qty) * n(pr?.cost))}</td>

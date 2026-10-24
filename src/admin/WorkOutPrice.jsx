@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { n, productCost, suggestedPrice, workedLine, TEMPLATES } from '../costing.js'
 import { money, money0 } from '../format.js'
+import { PartPicker } from './ui.jsx'
 
 // Pop-up for a one-off line: pick parts from Stock and hours → what it costs and a suggested price.
 export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClose }) {
@@ -44,16 +45,14 @@ export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClo
             {Object.entries(TEMPLATES).map(([k, v]) => <option key={k} value={k}>{v.title}</option>)}
           </select></div>
 
-        <div className="block-head" style={{ marginTop: 14 }}><h3>Parts</h3><button className="btn small" type="button" disabled={!active.length} onClick={() => setR({ ...r, mats: [...r.mats, { id: active[0]?.id, qty: 1 }] })}>Add part</button></div>
-        <div className="tbl-wrap"><table>
+        <div className="block-head" style={{ marginTop: 14 }}><h3>Parts</h3><button className="btn small" type="button" disabled={!active.length} onClick={() => setR({ ...r, mats: [...r.mats, { id: '', qty: 1 }] })}>Add part</button></div>
+        <div className="tbl-wrap open-ok"><table>
           <thead><tr><th>Part (from Stock)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
           <tbody>{r.mats.map((x, i) => {
             const pr = prices.find((y) => y.id === x.id)
             return (
               <tr key={i}>
-                <td><select aria-label="Part" value={x.id} onChange={(e) => setRow('mats', i, { id: e.target.value })}>
-                  {!pr && <option value={x.id}>{x.id} (not on the list)</option>}
-                  {prices.filter((y) => y.active || y.id === x.id).map((y) => <option key={y.id} value={y.id}>{y.name}</option>)}</select></td>
+                <td><PartPicker prices={prices} value={x.id} onChange={(id) => setRow('mats', i, { id })} autoFocus={!x.id} /></td>
                 <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={x.qty} onChange={(e) => setRow('mats', i, { qty: e.target.value })} /></td>
                 <td className="r num" style={{ color: pr && !n(pr.cost) ? 'var(--warn)' : undefined }}>{pr ? (n(pr.cost) ? money(pr.cost) : 'no price') : '—'}</td>
                 <td className="r num">{money(n(x.qty) * n(pr?.cost))}</td>
