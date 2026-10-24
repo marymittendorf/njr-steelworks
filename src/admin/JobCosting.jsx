@@ -105,9 +105,9 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     toast(`Deleted ${job.quote_no}`); go('jobs')
   }
 
-  async function openDoc() {
+  async function openDoc(mode = 'view') {
     const saved = await save()
-    if (saved) setShowDoc(true)
+    if (saved) setShowDoc(mode)
   }
 
   const marginColour = t.margin < 12 ? 'var(--bad)' : t.margin < 18 ? 'var(--warn)' : 'var(--good)'
@@ -216,7 +216,8 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           {noCost > 0 && <div className="row hint" style={{ color: 'var(--warn)' }}>{noCost} line{noCost > 1 ? 's have' : ' has'} no cost, so profit looks higher than it is.</div>}
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
-            <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {job.invoice_no ? 'invoice' : 'quote'}</button>
+            <button className="btn" type="button" disabled={busy} onClick={() => openDoc('email')}>Email {job.invoice_no ? 'invoice' : 'quote'}</button>
+            <button className="btn" type="button" disabled={busy} onClick={() => openDoc('view')}>View / print</button>
             {job.id && <button className="btn" type="button" onClick={() => setShowPhotos(true)}>Photos &amp; hand-in</button>}
             {me?.role === 'owner' && job.id && !job.invoice_no && (confirmDel
               ? <button className="btn small danger" type="button" onClick={deleteJob}>Confirm: delete {job.quote_no}</button>
@@ -229,7 +230,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
       {workOut !== null && lines[workOut] && <WorkOutPrice line={lines[workOut]} prices={prices} rates={settingsRates} markup={settings.markup}
         onClose={() => setWorkOut(null)} onUse={(line) => { updLine(workOut, line); setWorkOut(null) }} />}
       {showPhotos && <JobFile job={job} me={me} toast={toast} onClose={() => setShowPhotos(false)} />}
-      {showDoc && <QuoteDoc job={job} settings={settings} onClose={() => setShowDoc(false)} onSent={async (msg) => {
+      {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={async (msg) => {
         toast(msg); setShowDoc(false)
         const { data } = await supabase.from('jobs').select('*').eq('id', job.id).single() // status may now be Quote sent
         if (data) setJob(data)

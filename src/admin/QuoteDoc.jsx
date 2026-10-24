@@ -3,9 +3,10 @@ import { supabase } from '../supabase.js'
 import { calc, clientParts, customerLines } from '../costing.js'
 import { addDays, money, shortDate } from '../format.js'
 
-export default function QuoteDoc({ job, settings, onClose, onSent }) {
+// email: open with the Email panel already showing (the Email button on quotes and invoices).
+export default function QuoteDoc({ job, settings, onClose, onSent, email = false }) {
   const docRef = useRef(null)
-  const [emailing, setEmailing] = useState(false)
+  const [emailing, setEmailing] = useState(email && Boolean(job.id))
   const t = calc(job)
   const r = job.rates
   const isInvoice = Boolean(job.invoice_no) // an accepted quote becomes an invoice (numbered by the database)

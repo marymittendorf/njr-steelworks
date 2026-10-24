@@ -138,7 +138,8 @@ function InvoiceView({ job, jobs, settings, me, toast, go, onBack, onChanged }) 
         <h1><button className="btn small" type="button" aria-label="Back to invoices" onClick={onBack}>←</button><span className="num">{job.invoice_no}</span></h1>
         <div className="rec-acts">
           {!job.invoice_voided_at && <button className="btn" type="button" onClick={() => go('cost', { jobId: job.id })}>Edit</button>}
-          <button className="btn" type="button" onClick={() => setShowDoc(true)}>Send / print</button>
+          <button className="btn" type="button" onClick={() => setShowDoc('email')}>Email</button>
+          <button className="btn" type="button" onClick={() => setShowDoc('view')}>View / print</button>
           {canPay && <button className="btn primary" type="button" onClick={() => setPaying(!paying)}>Record payment</button>}
           <div className="menu-more">
             <button className="btn" type="button" aria-label="More" aria-expanded={more} onClick={() => setMore(!more)}>⋯</button>
@@ -204,7 +205,7 @@ function InvoiceView({ job, jobs, settings, me, toast, go, onBack, onChanged }) 
         </table></div>
       )}
 
-      {showDoc && <QuoteDoc job={job} settings={settings} onClose={() => setShowDoc(false)} onSent={(msg) => { toast(msg); setShowDoc(false) }} />}
+      {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={(msg) => { toast(msg); setShowDoc(false) }} />}
       {statement && <Statement customer={job} jobs={jobs.filter((j) => sameCustomer(j, job))} settings={settings} onClose={() => setStatement(false)} />}
     </>
   )
