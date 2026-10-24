@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, customerLines } from '../costing.js'
+import { calc, clientParts, customerLines } from '../costing.js'
 import { addDays, money, shortDate } from '../format.js'
 
 export default function QuoteDoc({ job, settings, onClose, onSent }) {
@@ -62,6 +62,7 @@ export default function QuoteDoc({ job, settings, onClose, onSent }) {
             : <><span><b>Deposit due now ({r.deposit}%)</b></span><span><b>{money(t.deposit)}</b></span></>)}
           {isInvoice && job.invoice_voided_at && <><span><b>VOID</b></span><span><b>{money(0)}</b></span></>}
         </div>
+        {clientParts(job).length > 0 && <p className="muted" style={{ marginTop: 14 }}><b>Supplied by the customer (not charged):</b> {clientParts(job).map((m) => `${m.qty} × ${m.name}`).join(', ')}. NJR fits these as supplied.</p>}
         <div className="terms">
           <b>Terms. </b>
           {isInvoice

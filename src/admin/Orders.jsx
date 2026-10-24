@@ -7,6 +7,7 @@ import { money } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
 import JobFile from './JobFile.jsx'
+import PartsChecklist from './PartsChecklist.jsx'
 
 const TABS = [
   ['Received', 'Received'],
@@ -18,6 +19,7 @@ const TABS = [
 
 export default function Orders({ settings, prices, go, toast, me }) {
   const [photosFor, setPhotosFor] = useState(null)
+  const [partsFor, setPartsFor] = useState(null)
   const [jobs, setJobs] = useState(null)
   const [stockCount, setStockCount] = useState(0)
   const [error, setError] = useState(null)
@@ -115,6 +117,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
                       <button className="btn small" type="button" disabled={busy === j.id} onClick={() => advance(j, step[0], step[1])}>{step[1]}</button>
                     </div>}
                     <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => setPhotosFor(j)}>Photos &amp; hand-in</button></div>
+                    {(j.mats || []).length > 0 && <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Parts {(j.mats || []).filter((m) => m.have).length}/{(j.mats || []).length}</button></div>}
                     {!stock && ['Ready', 'In production'].includes(j.status) && (
                       <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => go('deliveries', { jobId: j.id })}>Book delivery</button></div>
                     )}
@@ -141,6 +144,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
           </tbody>
         </table></div>
       )}
+      {partsFor && <PartsChecklist job={partsFor} toast={toast} onClose={() => setPartsFor(null)} onSaved={(updated) => { setJobs((list) => list.map((x) => (x.id === updated.id ? updated : x))); setPartsFor(null) }} />}
       {photosFor && <JobFile job={photosFor} me={me} toast={toast} onClose={() => setPhotosFor(null)} />}
       {importing && <ImportQuote settings={settings} onClose={() => setImporting(false)} onCreated={(job) => { setImporting(false); setTab(job.status); toast(`Order created for ${job.customer}: invoice ${job.invoice_no}`); load() }} />}
       <p className="hint">Tip: double-click any row to open it. Setting a quote to Received on the costing screen puts it here.</p>

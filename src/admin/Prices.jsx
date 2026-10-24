@@ -50,6 +50,7 @@ export default function Prices({ prices, reload, syncFromPrices, toast }) {
         </tbody>
       </table></div>
 
+      <p className="hint">The website's instant price calculator (switched on under Rates &amp; settings) prices trailers, skips and gates from items with these short codes, so give them these codes when you add them: sq50, sq40, sq20, rhs76, ang40, ang50, ch100, fb50, sh16, sh2, sh45, chq3, mesh, axle, spring, wheel, coupler, jockey, lights, guards, reflect, lugs, paint, gate_hinge, gate_slide.</p>
       <form className="card" onSubmit={addItem}>
         <div className="block-head"><h3>Add an item</h3></div>
         <div className="fgrid">

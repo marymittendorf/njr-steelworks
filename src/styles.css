@@ -321,3 +321,6 @@ label.btn input[type=file]{display:none}
 .bank-line{padding:14px 18px}
 .sugg{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line)}
 .sugg > span:nth-child(2){flex:1;min-width:200px}
+
+/* Parts supplied by the client */
+tr.client-part td{background:rgba(111,168,232,.07)}

@@ -58,8 +58,16 @@ export function ratesFrom(settings) {
 }
 
 export function matLine(price, qty = 1) {
-  return { id: price.id, name: price.name, unit: price.unit, qty, cost: n(price.cost), kg: n(price.kg) }
+  return { id: price.id, name: price.name, unit: price.unit, qty, cost: n(price.cost), kg: n(price.kg), supplied_by: 'NJR', have: false }
 }
+
+// A part that isn't on the price list (e.g. the towing hitch ball a client bought).
+export function customPart(name = '', supplied_by = 'NJR') {
+  return { id: `custom-${Math.random().toString(36).slice(2, 9)}`, name, unit: 'each', qty: 1, cost: 0, kg: 0, supplied_by, have: false, custom: true }
+}
+
+// Parts the customer supplies, for the quote/invoice note.
+export const clientParts = (job) => (job.mats || []).filter((m) => m.supplied_by === 'Client')
 
 export function fromTemplate(key, prices) {
   const t = TEMPLATES[key] || TEMPLATES.custom
@@ -78,6 +86,7 @@ export function calc(job) {
   let materials = 0
   let kg = 0
   for (const m of job.mats) {
+    if (m.supplied_by === 'Client') continue // the customer brings it: on the parts list, not charged
     materials += n(m.qty) * n(m.cost)
     kg += n(m.qty) * n(m.kg)
   }

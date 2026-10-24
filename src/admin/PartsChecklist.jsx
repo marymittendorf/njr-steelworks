@@ -1,0 +1,48 @@
+import { useState } from 'react'
+import { supabase } from '../supabase.js'
+import { syncInvoiceTotals } from '../orders.js'
+import { ErrorNote } from './ui.jsx'
+
+// Quick tick-list for the workshop: which parts are in, and who supplies each one.
+export default function PartsChecklist({ job, toast, onClose, onSaved }) {
+  const [mats, setMats] = useState(() => (job.mats || []).map((m) => ({ ...m, supplied_by: m.supplied_by || 'NJR' })))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const set = (i, patch) => setMats(mats.map((m, k) => (k === i ? { ...m, ...patch } : m)))
+  const changedSupplier = mats.some((m, i) => m.supplied_by !== ((job.mats[i] || {}).supplied_by || 'NJR'))
+
+  async function save() {
+    setBusy(true); setError(null)
+    const { data, error } = await supabase.from('jobs').update({ mats, updated_at: new Date().toISOString() }).eq('id', job.id).select().single()
+    if (error) { setError(error); setBusy(false); return }
+    const updated = changedSupplier ? await syncInvoiceTotals(data) : data
+    setBusy(false); toast(`Parts updated: ${mats.filter((m) => m.have).length} of ${mats.length} in`); onSaved(updated)
+  }
+
+  return (
+    <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="card" style={{ maxWidth: 680, margin: '0 auto' }}>
+        <div className="block-head"><div><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>Parts</h3>
+          <span className="hint">{job.quote_no} · {job.customer} · {job.title}</span></div>
+          <button className="btn small" type="button" onClick={onClose}>Close</button></div>
+        <ErrorNote error={error} />
+        <div className="tbl-wrap"><table>
+          <thead><tr><th>Have it</th><th>Part</th><th className="r">Qty</th><th>Supplied by</th></tr></thead>
+          <tbody>{mats.map((m, i) => (
+            <tr key={i} className={m.supplied_by === 'Client' ? 'client-part' : ''}>
+              <td><input type="checkbox" checked={Boolean(m.have)} onChange={(e) => set(i, { have: e.target.checked })} aria-label={`Have ${m.name}`} style={{ width: 22, height: 22 }} /></td>
+              <td>{m.name || <span className="hint">(no name)</span>}</td>
+              <td className="r num">{m.qty}</td>
+              <td><select aria-label="Supplied by" value={m.supplied_by} onChange={(e) => set(i, { supplied_by: e.target.value })} style={{ width: 'auto' }}>
+                <option value="NJR">NJR</option><option value="Client">Client</option></select></td>
+            </tr>))}</tbody>
+        </table></div>
+        {changedSupplier && job.invoice_no && <p className="hint" style={{ color: 'var(--warn)' }}>Changing who supplies a part changes the invoice total.</p>}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+          <span className="hint" style={{ alignSelf: 'center' }}>To add or price parts, open the job's costing.</span>
+        </div>
+      </div>
+    </div>
+  )
+}

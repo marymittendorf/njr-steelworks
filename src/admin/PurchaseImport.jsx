@@ -1,0 +1,163 @@
+import { useState } from 'react'
+import { supabase } from '../supabase.js'
+import { n } from '../costing.js'
+import { money } from '../format.js'
+import { readDocument } from '../docReader.js'
+import { parseSlip, parseInvoiceLines } from '../docParse.js'
+import { uploadExpenseDoc, PAY_METHODS } from './ExpenseForm.jsx'
+import { ErrorNote } from './ui.jsx'
+
+const today = () => new Date().toISOString().slice(0, 10)
+const r2 = (v) => Math.round(v * 100) / 100
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || `item${Date.now() % 100000}`
+
+// Upload a supplier invoice → read supplier, date, number and each item → check →
+// items go into parts & materials stock at the purchase price, the purchase goes into Expenses.
+export default function PurchaseImport({ stockParts, prices, me, toast, onClose, onSaved }) {
+  const [file, setFile] = useState(null)
+  const [reading, setReading] = useState(null)
+  const [error, setError] = useState(null)
+  const [f, setF] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const findStock = (desc) => stockParts.find((s) => s.name.toLowerCase() === desc.toLowerCase())?.id || ''
+
+  async function pick(e) {
+    const chosen = e.target.files[0]
+    if (!chosen) return
+    setFile(chosen); setError(null); setReading('Reading the invoice…')
+    let slip = { supplier: '', date: null, invoice_no: '', total: null, vat: 0 }
+    let items = []
+    try {
+      const { lines } = await readDocument(chosen, (pct) => setReading(`Reading the photo… ${pct}%`))
+      slip = parseSlip(lines)
+      items = parseInvoiceLines(lines)
+    } catch (err) { setError(`${err.message} Type the items in below.`) }
+    const sum = items.reduce((a, i) => a + i.total, 0)
+    // Line prices include VAT when they add up to the invoice total rather than the total less VAT.
+    const inclVat = slip.total !== null && slip.vat > 0 && Math.abs(sum - slip.total) < Math.abs(sum - (slip.total - slip.vat))
+    setF({
+      supplier: slip.supplier || '', invoice_date: slip.date || today(), invoice_no: slip.invoice_no || '', method: 'EFT',
+      docTotal: slip.total, docVat: slip.vat || 0, inclVat, vatOn: (slip.vat || 0) > 0,
+      items: (items.length ? items : [{ desc: '', qty: 1, unit: '', total: 0 }]).map((i) => ({
+        desc: i.desc, qty: i.qty, unit: i.unit, stock: findStock(i.desc), unitName: 'each', toPriceList: false,
+      })),
+    })
+    setReading(null)
+  }
+
+  const set = (i, patch) => setF({ ...f, items: f.items.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
+  const exclUnit = (it) => (f.inclVat ? n(it.unit) / 1.15 : n(it.unit))
+  const lineExcl = (it) => r2(n(it.qty) * exclUnit(it))
+  const excl = f ? r2(f.items.reduce((a, it) => a + lineExcl(it), 0)) : 0
+  const vat = f && f.vatOn ? r2(excl * 0.15) : 0
+  const total = r2(excl + vat)
+  const differs = f && f.docTotal !== null && Math.abs(total - f.docTotal) > 1
+
+  async function save() {
+    const items = f.items.filter((it) => it.desc.trim() && n(it.qty) > 0)
+    if (!f.supplier.trim()) { setError('Add the supplier.'); return }
+    if (!items.length) { setError('Add at least one item with a quantity.'); return }
+    setBusy(true); setError(null)
+    try {
+      const file_path = file ? await uploadExpenseDoc(file) : null
+      const names = items.map((it) => `${n(it.qty)} × ${it.desc.trim()}`).join(', ')
+      const { data: exp, error: e1 } = await supabase.from('expenses').insert({
+        paid_on: f.invoice_date, supplier: f.supplier.trim(), description: `Stock: ${names}`.slice(0, 500), category: 'Steel & materials',
+        amount_excl: excl, vat, invoice_no: f.invoice_no.trim() || null, payment_method: f.method, file_path,
+      }).select('id').single()
+      if (e1) throw e1
+      const { data: pur, error: e2 } = await supabase.from('purchases').insert({
+        supplier: f.supplier.trim(), invoice_no: f.invoice_no.trim() || null, invoice_date: f.invoice_date,
+        amount_excl: excl, vat, file_path, expense_id: exp.id, recorded_by: me?.name || null,
+      }).select('id').single()
+      if (e2) throw e2
+
+      for (const it of items) {
+        const unitCost = r2(exclUnit(it))
+        let part = stockParts.find((s) => s.id === it.stock)
+        if (!part) {
+          const existing = stockParts.find((s) => s.name.toLowerCase() === it.desc.trim().toLowerCase())
+          if (existing) part = existing
+          else {
+            const { data, error } = await supabase.from('stock_parts').insert({ name: it.desc.trim(), unit: it.unitName || 'each', qty_on_hand: 0 }).select().single()
+            if (error) throw error
+            part = data; stockParts.push(data)
+          }
+        }
+        // Add to the price list (or update it) when ticked.
+        let price_id = part.price_id
+        if (it.toPriceList) {
+          if (price_id) await supabase.from('prices').update({ cost: unitCost }).eq('id', price_id)
+          else {
+            let id = slug(part.name)
+            if (prices.some((p) => p.id === id)) id = `${id}${Math.floor(Math.random() * 900 + 100)}`
+            const { error } = await supabase.from('prices').insert({ id, name: part.name, unit: part.unit, cost: unitCost, kg: 0, sort: 500, notes: `From ${f.supplier.trim()} invoice ${f.invoice_no || ''}`.trim() })
+            if (error) throw error
+            price_id = id
+          }
+        }
+        const { error: e3 } = await supabase.from('stock_parts').update({ qty_on_hand: n(part.qty_on_hand) + n(it.qty), last_cost: unitCost, price_id }).eq('id', part.id)
+        if (e3) throw e3
+        part.qty_on_hand = n(part.qty_on_hand) + n(it.qty)
+        const { error: e4 } = await supabase.from('purchase_lines').insert({ purchase_id: pur.id, stock_part_id: part.id, description: it.desc.trim(), qty: n(it.qty), unit_cost: unitCost, line_total: r2(n(it.qty) * unitCost) })
+        if (e4) throw e4
+      }
+      toast(`${items.length} item${items.length === 1 ? '' : 's'} added to stock; ${money(total)} recorded in Expenses`)
+      onSaved()
+    } catch (err) { setError(err) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="modal" onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
+      <div className="card" style={{ maxWidth: 980, margin: '0 auto' }}>
+        <div className="block-head"><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>Upload a purchase invoice</h3><button className="x" type="button" aria-label="Close" onClick={onClose}>×</button></div>
+        <p className="hint" style={{ marginTop: 0 }}>A PDF invoice or a photo of the slip. We read the supplier and each item; you check them; they go into stock and Expenses.</p>
+        <div className="field slip-drop"><label htmlFor="pi-file">Supplier invoice (PDF or photo)</label>
+          <input id="pi-file" type="file" accept="application/pdf,image/*" capture="environment" onChange={pick} disabled={!!reading || busy} /></div>
+        {reading && <p className="loading">{reading}</p>}
+        <ErrorNote error={error} />
+
+        {f && !reading && <>
+          <div className="fgrid" style={{ marginTop: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <div className="field"><label htmlFor="pi-sup">Supplier</label><input id="pi-sup" value={f.supplier} onChange={(e) => setF({ ...f, supplier: e.target.value })} /></div>
+            <div className="field"><label htmlFor="pi-no">Invoice no.</label><input id="pi-no" value={f.invoice_no} onChange={(e) => setF({ ...f, invoice_no: e.target.value })} /></div>
+            <div className="field"><label htmlFor="pi-date">Date</label><input id="pi-date" type="date" value={f.invoice_date} onChange={(e) => setF({ ...f, invoice_date: e.target.value })} /></div>
+            <div className="field"><label htmlFor="pi-m">Paid by</label><select id="pi-m" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{PAY_METHODS.map((m) => <option key={m}>{m}</option>)}</select></div>
+          </div>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', margin: '10px 0' }}>
+            <label className="check"><input type="checkbox" checked={f.vatOn} onChange={(e) => setF({ ...f, vatOn: e.target.checked })} /> Supplier charged VAT</label>
+            {f.vatOn && <label className="check"><input type="checkbox" checked={f.inclVat} onChange={(e) => setF({ ...f, inclVat: e.target.checked })} /> Item prices on the invoice include VAT</label>}
+          </div>
+          <div className="tbl-wrap"><table>
+            <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each{f.inclVat ? ' (incl. VAT)' : ''}</th><th className="r">Line excl. VAT</th><th>Goes into stock as</th><th>Price list</th><th /></tr></thead>
+            <tbody>{f.items.map((it, i) => (
+              <tr key={i}>
+                <td><input aria-label="Item" value={it.desc} onChange={(e) => set(i, { desc: e.target.value, stock: it.stock || findStock(e.target.value) })} /></td>
+                <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={it.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
+                <td className="r"><input className="money num" aria-label="Price each" type="number" min="0" step="0.01" value={it.unit} onChange={(e) => set(i, { unit: e.target.value })} /></td>
+                <td className="r num">{money(lineExcl(it))}</td>
+                <td><select aria-label="Stock item" value={it.stock} onChange={(e) => set(i, { stock: e.target.value })}>
+                  <option value="">New stock item: {it.desc ? it.desc.slice(0, 30) : '…'}</option>
+                  {stockParts.map((s) => <option key={s.id} value={s.id}>{s.name} ({n(s.qty_on_hand)} on hand)</option>)}
+                </select></td>
+                <td><label className="check" title="Add this item to the steel price list, or update its cost there"><input type="checkbox" checked={it.toPriceList} onChange={(e) => set(i, { toPriceList: e.target.checked })} /> Update</label></td>
+                <td><button className="x" type="button" aria-label="Remove line" onClick={() => setF({ ...f, items: f.items.filter((_, k) => k !== i) })}>×</button></td>
+              </tr>))}</tbody>
+          </table></div>
+          <button className="btn small" type="button" style={{ marginTop: 8 }} onClick={() => setF({ ...f, items: [...f.items, { desc: '', qty: 1, unit: '', stock: '', unitName: 'each', toPriceList: false }] })}>Add line</button>
+          <div className="sheet" style={{ position: 'static', marginTop: 12 }}>
+            <dl style={{ paddingTop: 12 }}>
+              <dt>Excl. VAT</dt><dd>{money(excl)}</dd><dt>VAT</dt><dd>{money(vat)}</dd><dt><b>Total</b></dt><dd><b>{money(total)}</b></dd>
+              {f.docTotal !== null && <><dt>Total on the invoice</dt><dd style={{ color: differs ? 'var(--warn)' : 'var(--good)' }}>{money(f.docTotal)}{differs ? ' (check the lines)' : ' ✓'}</dd></>}
+            </dl>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+            <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Add to stock and Expenses'}</button>
+            <button className="btn ghost" type="button" disabled={busy} onClick={onClose}>Cancel</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  )
+}

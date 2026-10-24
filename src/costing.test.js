@@ -48,3 +48,11 @@ test('from prices are rounded to R100', () => {
   const fp = computeFromPrices({ ...rates, markup: 20 }, prices)
   for (const v of Object.values(fp)) assert.equal(v % 100, 0)
 })
+
+test('parts supplied by the client are listed but not charged', () => {
+  const rates = { labour: 0, consumables: 0, overhead: 0, vat: 0, galv: 0, validity: 14, deposit: 50 }
+  const base = { units: 1, galv: false, markup: 0, rates, labour: [], extras: [] }
+  const ours = calc({ ...base, mats: [{ qty: 1, cost: 500, kg: 0 }] })
+  const withClient = calc({ ...base, mats: [{ qty: 1, cost: 500, kg: 0 }, { qty: 1, cost: 300, kg: 0, supplied_by: 'Client' }] })
+  assert.equal(withClient.total, ours.total)
+})

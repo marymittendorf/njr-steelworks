@@ -3,12 +3,13 @@ import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, money0, shortDate } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
+import PartsStock from './PartsStock.jsx'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const blankItem = { title: '', description: '', built_on: today(), asking_price: '' }
 
 // Finished trailers/skips in the yard. Stock builds from Orders arrive here by themselves.
-export default function Stock({ go, toast }) {
+export default function Stock({ go, toast, prices, me }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
   const [selling, setSelling] = useState(null) // { id, sold_to, sold_phone, sold_price, sold_on }
@@ -56,10 +57,14 @@ export default function Stock({ go, toast }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Stock</h1><p>Finished trailers and skips in the yard. Stock builds from Orders arrive here when they're finished.</p></div>
+        <div><h1>Stock</h1><p>Parts and materials you've bought, and finished trailers and skips in the yard.</p></div>
         {!adding && <button className="btn" type="button" onClick={() => setAdding({ ...blankItem })}>Add existing stock</button>}
       </div>
       <ErrorNote error={error} />
+
+      <PartsStock prices={prices} me={me} toast={toast} />
+
+      <div className="block-head"><h3 style={{ fontSize: '1.6rem' }}>Finished trailers &amp; skips</h3></div>
 
       <div className="kpis">
         <div className="kpi"><span className="label">In stock</span><b className="num">{inStock.length}</b></div>

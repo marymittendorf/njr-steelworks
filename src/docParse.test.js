@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { toAmount, amountsIn, findDate, parseSlip, parseQuote } from './docParse.js'
+import { toAmount, amountsIn, findDate, parseSlip, parseQuote, parseInvoiceLines } from './docParse.js'
 
 test('South African money formats', () => {
   assert.equal(toAmount('R1 234,50'), 1234.5)
@@ -82,4 +82,25 @@ test('quote whose lines do not add up falls back to one total', () => {
   assert.equal(q.linesAddUp, false)
   assert.equal(q.items.length, 0)
   assert.equal(q.total, 20000)
+})
+
+
+test('supplier invoice item lines: qty, unit price and line total', () => {
+  const items = parseInvoiceLines([
+    'BUILDERS GEORGE', 'TAX INVOICE', 'Invoice No: GE-778812', 'Date 18/10/2026',
+    '2 CUTTING DISCS 115MM        R 94,95     R 189,90',
+    'MIG WIRE 0.8MM 5KG  1  R 449,00  R 449,00',
+    'SQ TUBE 50X50X2 6M x 6     R 520,00   R 3 120,00',
+    'Subtotal R 3 758,90', 'VAT 15% R 563,84', 'TOTAL R 4 322,74',
+  ])
+  assert.equal(items.length, 3)
+  assert.deepEqual(items.map((i) => i.qty), [2, 1, 6])
+  assert.deepEqual(items.map((i) => i.unit), [94.95, 449, 520])
+  assert.match(items[2].desc, /SQ TUBE 50X50X2/)
+})
+
+test('description printed twice is read once', () => {
+  const items = parseInvoiceLines(['Services Fees  Services Fees  R5.01', 'Standard Hosting - njr.co.za  Standard Hosting - njr.co.za  R65.00'])
+  assert.equal(items[0].desc, 'Services Fees')
+  assert.equal(items[1].desc, 'Standard Hosting - njr.co.za')
 })

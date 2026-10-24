@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, fromTemplate, matLine, n, ratesFrom, STATUSES, TEMPLATES } from '../costing.js'
+import { calc, customPart, fromTemplate, matLine, n, ratesFrom, STATUSES, TEMPLATES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
@@ -50,7 +50,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     setJob((j) => ({
       ...j,
       rates: ratesFrom(settings),
-      mats: j.mats.map((m) => (priceById[m.id] ? { ...matLine(priceById[m.id], m.qty) } : m)),
+      mats: j.mats.map((m) => (priceById[m.id] ? { ...matLine(priceById[m.id], m.qty), supplied_by: m.supplied_by || 'NJR', have: m.have || false } : m)),
     }))
     toast('Updated to current prices and rates')
   }
@@ -140,29 +140,42 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           </div></div>
 
           <div className="block">
-            <div className="block-head"><h3>Steel &amp; hardware</h3>
-              <button className="btn small" type="button" disabled={!active.length} onClick={() => addRow('mats', matLine(active[0]))}>Add material</button></div>
+            <div className="block-head"><h3>Parts &amp; materials</h3>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn small" type="button" disabled={!active.length} onClick={() => addRow('mats', matLine(active[0]))}>Add from price list</button>
+                <button className="btn small" type="button" onClick={() => addRow('mats', customPart())}>Add other part</button>
+                <button className="btn small" type="button" onClick={() => addRow('mats', customPart('', 'Client'))}>Client supplies a part</button>
+              </div></div>
             <div className="tbl-wrap"><table>
-              <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Unit cost</th><th className="r">Line</th><th></th></tr></thead>
+              <thead><tr><th>Part</th><th className="r">Qty</th><th className="r">Unit cost</th><th className="r">Line</th><th>Supplied by</th><th>Have it</th><th></th></tr></thead>
               <tbody>
-                {job.mats.map((m, i) => (
-                  <tr key={i}>
+                {job.mats.map((m, i) => {
+                  const client = m.supplied_by === 'Client'
+                  return (
+                  <tr key={i} className={client ? 'client-part' : ''}>
                     <td>
-                      <select aria-label="Material" value={m.id} onChange={(e) => updRow('mats', i, matLine(priceById[e.target.value], m.qty))}>
-                        {!priceById[m.id] && <option value={m.id}>{m.name}</option>}
-                        {prices.filter((p) => p.active || p.id === m.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                      <div className="hint" style={{ fontSize: '.8rem' }}>{m.unit} · {m.kg} kg</div>
+                      {m.custom || !priceById[m.id] && m.id?.startsWith('custom-')
+                        ? <input aria-label="Part name" value={m.name} onChange={(e) => updRow('mats', i, { name: e.target.value })} placeholder={client ? 'e.g. towing hitch ball, brake cable' : 'Part name'} />
+                        : <select aria-label="Material" value={m.id} onChange={(e) => updRow('mats', i, { ...matLine(priceById[e.target.value], m.qty), supplied_by: m.supplied_by || 'NJR', have: m.have || false })}>
+                            {!priceById[m.id] && <option value={m.id}>{m.name}</option>}
+                            {prices.filter((p) => p.active || p.id === m.id).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>}
+                      {!m.custom && <div className="hint" style={{ fontSize: '.8rem' }}>{m.unit}{Number(m.kg) ? ` · ${m.kg} kg` : ''}</div>}
                     </td>
                     <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={m.qty} onChange={(e) => updRow('mats', i, { qty: e.target.value })} /></td>
-                    <td className="r"><input className="money num" aria-label="Unit cost" type="number" min="0" step="10" value={m.cost} onChange={(e) => updRow('mats', i, { cost: e.target.value })} /></td>
-                    <td className="r num">{money(n(m.qty) * n(m.cost))}</td>
+                    <td className="r">{client ? <span className="hint">not charged</span>
+                      : <input className="money num" aria-label="Unit cost" type="number" min="0" step="0.01" value={m.cost} onChange={(e) => updRow('mats', i, { cost: e.target.value })} />}</td>
+                    <td className="r num">{client ? '—' : money(n(m.qty) * n(m.cost))}</td>
+                    <td><select aria-label="Supplied by" value={m.supplied_by || 'NJR'} onChange={(e) => updRow('mats', i, { supplied_by: e.target.value })} style={{ width: 'auto' }}>
+                      <option value="NJR">NJR</option><option value="Client">Client</option></select></td>
+                    <td><label className="check"><input type="checkbox" checked={Boolean(m.have)} onChange={(e) => updRow('mats', i, { have: e.target.checked })} aria-label={`Have ${m.name}`} /> {m.have ? 'Yes' : 'No'}</label></td>
                     <td><button className="x" type="button" aria-label={`Remove ${m.name}`} onClick={() => delRow('mats', i)}>×</button></td>
-                  </tr>
-                ))}
-                {!job.mats.length && <tr><td colSpan="5" className="hint">No materials yet.</td></tr>}
+                  </tr>)
+                })}
+                {!job.mats.length && <tr><td colSpan="7" className="hint">No parts yet.</td></tr>}
               </tbody>
             </table></div>
+            {job.mats.length > 0 && <p className="hint">Have {job.mats.filter((m) => m.have).length} of {job.mats.length} parts{job.mats.some((m) => m.supplied_by === 'Client') ? ` · ${job.mats.filter((m) => m.supplied_by === 'Client').length} supplied by the client (not charged, listed on the quote)` : ''}.</p>}
           </div>
 
           <div className="block">

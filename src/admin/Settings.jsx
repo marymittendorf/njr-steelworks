@@ -41,6 +41,7 @@ export default function Settings({ settings, prices, syncFromPrices, toast, me }
     patch.people = f.people.filter((p) => p.name.trim())
     patch.bank_details = f.bank_details
     patch.ai_estimator_enabled = Boolean(f.ai_estimator_enabled)
+    patch.calculator_enabled = Boolean(f.calculator_enabled)
     patch.ai_daily_limit = Math.max(0, Math.round(n(f.ai_daily_limit)))
     patch.ai_per_visitor_daily = Math.max(1, Math.round(n(f.ai_per_visitor_daily)))
     patch.from_prices = Object.fromEntries(SERVICES.map((s) => {
@@ -75,6 +76,12 @@ export default function Settings({ settings, prices, syncFromPrices, toast, me }
           ))}
         </tbody>
       </table></div>
+
+      <div className="block-head"><h3>Instant price calculator</h3><span className="hint">Trailers, skips and gates priced from your steel price list, on the website</span></div>
+      <div className="card block">
+        <label className="check"><input type="checkbox" checked={Boolean(f.calculator_enabled)} onChange={(e) => setF({ ...f, calculator_enabled: e.target.checked })} /> Show "Instant price" on the website</label>
+        <p className="hint" style={{ marginBottom: 0 }}>Only switch this on once the steel price list has your real prices for tube, plate, axles, wheels, paint and gate hardware. Otherwise customers see wrong prices.</p>
+      </div>
 
       <AiSettings f={f} setF={setF} />
 

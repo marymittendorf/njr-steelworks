@@ -135,3 +135,42 @@ export function parseQuote(lines) {
     linesAddUp: goodLines,
   }
 }
+
+// Some PDFs print the description twice side by side ("Services Fees Services Fees").
+function undouble(text) {
+  const w = text.split(' ')
+  if (w.length >= 2 && w.length % 2 === 0) {
+    const half = w.length / 2
+    if (w.slice(0, half).join(' ').toLowerCase() === w.slice(half).join(' ').toLowerCase()) return w.slice(0, half).join(' ')
+  }
+  return text
+}
+
+// Supplier invoice / till slip → item lines { desc, qty, unit, total }.
+// Looks for lines with a quantity and/or two money amounts (unit price and line total).
+// Staff check every line before it goes into stock, so this aims to get most lines right.
+const NOT_ITEM = /\b(sub\s*-?\s*total|total|vat|tax|balance|change|tendered|cash|card|eft|amount\s+due|discount|rounding|deposit|paid|bank|branch|account|tel|fax|invoice|date|page)\b/i
+export function parseInvoiceLines(lines) {
+  const out = []
+  for (const raw of lines) {
+    const l = raw.trim()
+    if (l.length < 4 || NOT_ITEM.test(l)) continue
+    const amts = amountsIn(l)
+    if (!amts.length) continue
+    const total = amts[amts.length - 1]
+    const unitGiven = amts.length >= 2 ? amts[amts.length - 2] : null
+    // Quantity: a small number at the start ("2 x", "2.00", "6 EA") or "x 6".
+    const qm = l.match(/^\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:x|ea|each|pcs?|no|units?)?\s+(?=[A-Za-z])/i) || l.match(/\b[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\b/i)
+    let qty = qm ? Number(qm[1].replace(',', '.')) : null
+    let unit = unitGiven
+    if (qty && !unit) unit = Math.round((total / qty) * 100) / 100
+    if (!qty && unit) { const q = total / unit; qty = Math.abs(q - Math.round(q * 100) / 100) < 0.02 ? Math.round(q * 100) / 100 : 1 }
+    if (!qty) { qty = 1; unit = total }
+    if (unit && Math.abs(unit * qty - total) > Math.max(1, total * 0.02)) { unit = Math.round((total / qty) * 100) / 100 } // keep qty × unit = total
+    const desc = l.replace(MONEY, ' ').replace(/^\s*\d{1,4}(?:[.,]\d{1,2})?\s*(?:x|ea|each|pcs?|no|units?)?\s+/i, '')
+      .replace(/\b[x×]\s*\d{1,4}(?:[.,]\d{1,2})?\b/gi, ' ').replace(/\b[A-Z0-9]{2,}-?\d{3,}\b/g, ' ').replace(/\s{2,}/g, ' ').trim()
+    if (desc.length < 3 || !/[a-z]{3}/i.test(desc)) continue
+    out.push({ desc: undouble(desc), qty, unit: Math.round(unit * 100) / 100, total })
+  }
+  return out
+}
