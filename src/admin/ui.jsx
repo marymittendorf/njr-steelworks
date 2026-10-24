@@ -117,3 +117,15 @@ export function BillTo({ who, label = 'For', mutedClass = 'muted' }) {
     </p>
   )
 }
+
+// Search: every word typed must appear somewhere in the row's fields (any order, any case).
+export function matches(q, ...values) {
+  const words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return true
+  const hay = values.map((v) => String(v ?? '')).join(' ').toLowerCase()
+  return words.every((w) => hay.includes(w))
+}
+
+export function SearchBox({ q, setQ, label = 'Search', style }) {
+  return <input type="search" aria-label={label} placeholder={label} value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240, ...style }} />
+}

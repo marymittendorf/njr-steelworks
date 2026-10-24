@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, customerLines, n } from '../costing.js'
 import { addDays, money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps, BillTo } from './ui.jsx'
+import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps, BillTo, matches } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 
 export const today = () => new Date().toISOString().slice(0, 10)
@@ -66,7 +66,7 @@ export default function Invoices({ settings, me, toast, target, go }) {
   const needle = q.trim().toLowerCase()
   const shown = rows
     .filter(({ state, st }) => view === 'All invoices' || (view === 'Unpaid' ? ['Unpaid', 'Part paid'].includes(state) : view === 'Overdue' ? st.overdue > 0 : view === 'Partly paid' ? state === 'Part paid' : state === view))
-    .filter(({ j }) => !needle || [j.invoice_no, j.quote_no, j.customer, j.phone, j.title].some((v) => String(v || '').toLowerCase().includes(needle)))
+    .filter(({ j }) => matches(needle, j.invoice_no, j.quote_no, j.customer, j.customer_company, j.phone, j.email, j.title))
 
   return (
     <>

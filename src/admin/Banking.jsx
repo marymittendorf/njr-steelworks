@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, shortDate } from '../format.js'
-import { Loading, ErrorNote } from './ui.jsx'
+import { Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 import { parseStatement, suggestMatches, supplierFromDescription, confidence, invoiceForMatching } from '../bankStatements.js'
 
 const BANKS = [['nedbank', 'Nedbank'], ['capitec', 'Capitec (coming)'], ['fnb', 'FNB'], ['other', 'Other']]
@@ -18,6 +18,7 @@ export default function Banking({ me, toast, go }) {
   const [unlinked, setUnlinked] = useState([])
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('open')
+  const [q, setQ] = useState('')
   const [newAcc, setNewAcc] = useState(null)
   const [upload, setUpload] = useState(null) // { account_id, file, parsed, warning }
   const [busy, setBusy] = useState(false)
@@ -48,6 +49,7 @@ export default function Banking({ me, toast, go }) {
   if (!accounts) return error ? <ErrorNote error={error} /> : <Loading />
   const isOwner = me?.role === 'owner'
   const shown = lines.filter((l) => filter === 'all' || (filter === 'open' ? ['unallocated', 'part'].includes(l.status) : l.status === filter))
+    .filter((l) => matches(q, l.description, l.reference, l.amount, l.ignore_note, l.txn_date))
   const openCount = lines.filter((l) => ['unallocated', 'part'].includes(l.status)).length
 
   async function addAccount(e) {
@@ -200,6 +202,7 @@ export default function Banking({ me, toast, go }) {
 
       <div className="block-head" style={{ alignItems: 'flex-end' }}>
         <h3>Money in</h3>
+        <SearchBox q={q} setQ={setQ} label="Search bank lines" />
         <div className="filters" role="group" aria-label="Show" style={{ marginBottom: 0 }}>
           {[['open', `To match (${openCount})`], ['allocated', 'Matched'], ['ignored', 'Not customer payments'], ['all', 'All']].map(([k, l]) => <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>)}
         </div>

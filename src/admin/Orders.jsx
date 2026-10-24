@@ -4,7 +4,7 @@ import { calc, ratesFrom, templateLine } from '../costing.js'
 import { ORDER_STAGES, isStockBuild, moveJob, nextStep, shortStamp } from '../orders.js'
 import { balanceOf, invoiceState } from './Invoices.jsx'
 import { money, money0 } from '../format.js'
-import { Pill, Loading, ErrorNote, ListHead, SumStrip } from './ui.jsx'
+import { Pill, Loading, ErrorNote, ListHead, SumStrip, matches } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
 import JobFile from './JobFile.jsx'
 import PartsChecklist, { jobParts } from './PartsChecklist.jsx'
@@ -38,7 +38,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
   const needle = q.trim().toLowerCase()
   const shown = jobs
     .filter((j) => inView(tab, j))
-    .filter((j) => !needle || [j.customer, j.quote_no, j.invoice_no, j.title, j.phone].some((v) => String(v || '').toLowerCase().includes(needle)))
+    .filter((j) => matches(needle, j.customer, j.customer_company, j.quote_no, j.invoice_no, j.title, j.phone, (j.products || []).map((l) => l.name).join(' ')))
 
   async function advance(job, status, label) {
     setBusy(job.id)

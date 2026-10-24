@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, shortDate } from '../format.js'
-import { Loading, ErrorNote } from './ui.jsx'
+import { Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 import ExpenseForm, { CATEGORIES, uploadExpenseDoc } from './ExpenseForm.jsx'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -19,6 +19,7 @@ function nextDue(iso, frequency) {
 const blankRecurring = () => ({ supplier: '', description: '', category: 'Rent & utilities', amount_excl: '', vat_rate: 15, frequency: 'monthly', next_due: today() })
 
 export default function Expenses({ toast, me }) {
+  const [q, setQ] = useState('')
   const [confirmDel, setConfirmDel] = useState(null)
   const [expenses, setExpenses] = useState(null)
   const [recurring, setRecurring] = useState(null)
@@ -41,7 +42,8 @@ export default function Expenses({ toast, me }) {
   const incl = (r) => n(r.amount_excl) * (1 + n(r.vat_rate) / 100)
   const perMonth = active.reduce((a, r) => a + (r.frequency === 'yearly' ? incl(r) / 12 : incl(r)), 0)
   const months = [...new Set([month(today()), ...expenses.map((e) => month(e.paid_on))])].sort().reverse()
-  const shown = expenses.filter((e) => filter === 'all' || month(e.paid_on) === filter)
+  // Searching looks through every month.
+  const shown = expenses.filter((e) => (q.trim() ? matches(q, e.supplier, e.description, e.category, e.invoice_no, e.payment_method, e.notes, e.total) : filter === 'all' || month(e.paid_on) === filter))
   const sum = (k) => shown.reduce((a, e) => a + n(e[k]), 0)
   const byCat = Object.entries(shown.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + n(e.total) }), {})).sort((a, b) => b[1] - a[1])
 
@@ -157,10 +159,11 @@ export default function Expenses({ toast, me }) {
 
       <div className="block">
         <div className="block-head"><h3>Expense log</h3>
-          <select aria-label="Show month" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: 'auto' }}>
+          <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search expenses" />
+          <select aria-label="Show month" disabled={Boolean(q.trim())} value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: 'auto' }}>
             {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
             <option value="all">All months</option>
-          </select></div>
+          </select></div></div>
         <div className="tbl-wrap"><table>
           <thead><tr><th>Date</th><th>Supplier</th><th>What for</th><th>Category</th><th className="r">Excl. VAT</th><th className="r">VAT</th><th className="r">Total</th><th>Invoice</th>{me?.role === 'owner' && <th />}</tr></thead>
           <tbody>

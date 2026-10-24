@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { ownLine, productLine, ratesFrom, templateLine, workedLine, TEMPLATE_FOR_REQUEST } from '../costing.js'
 import { money0, shortDate, waNumber } from '../format.js'
-import { Pill, Loading, ErrorNote } from './ui.jsx'
+import { Pill, Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 
 export default function Requests({ settings, prices, go, refreshCount }) {
   const [list, setList] = useState(null)
   const [error, setError] = useState(null)
   const [showAll, setShowAll] = useState(false)
+  const [q, setQ] = useState('')
   const [photoUrls, setPhotoUrls] = useState({})
 
   const load = () => supabase.from('requests').select('*').order('created_at', { ascending: false })
@@ -59,13 +60,15 @@ export default function Requests({ settings, prices, go, refreshCount }) {
     })
   }
 
-  const shown = (list || []).filter((r) => showAll || r.status === 'New')
+  // Searching looks through all requests, not only new ones.
+  const shown = (list || []).filter((r) => (q.trim() ? matches(q, r.name, r.phone, r.email, r.type, r.detail, r.timing) : showAll || r.status === 'New'))
 
   return (
     <>
       <div className="pagehead">
         <h1>Website requests</h1>
-        <label className="check"><input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show quoted &amp; declined</label>
+        <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search requests" />
+        <label className="check"><input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show quoted &amp; declined</label></div>
       </div>
       <ErrorNote error={error} />
       {list === null ? <Loading /> : !shown.length ? (

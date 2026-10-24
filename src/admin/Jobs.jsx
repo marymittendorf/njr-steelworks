@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, n } from '../costing.js'
 import { addDays, money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps } from './ui.jsx'
+import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps, matches } from './ui.jsx'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const ACCEPTED = ['Received', 'In production', 'Ready', 'Delivered']
@@ -49,7 +49,7 @@ export default function Jobs({ go }) {
   const sum = (list) => list.reduce((a, x) => a + x.t.total, 0)
   const needle = q.trim().toLowerCase()
   const shown = rows.filter(({ j }) => inView(view, j))
-    .filter(({ j }) => !needle || [j.quote_no, j.invoice_no, j.customer, j.phone, j.title].some((v) => String(v || '').toLowerCase().includes(needle)))
+    .filter(({ j }) => matches(needle, j.quote_no, j.invoice_no, j.customer, j.customer_company, j.phone, j.email, j.title, (j.products || []).map((l) => l.name).join(' ')))
 
   return (
     <>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { moveJob } from '../orders.js'
 import { shortDate } from '../format.js'
-import { Pill, Loading, ErrorNote } from './ui.jsx'
+import { Pill, Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const todayIso = () => iso(new Date())
@@ -21,6 +21,7 @@ export default function Deliveries({ target, toast }) {
   const [form, setForm] = useState(null)
   const [signing, setSigning] = useState(null)
   const [note, setNote] = useState(null)
+  const [q, setQ] = useState('')
 
   const load = async () => {
     const [d, j] = await Promise.all([
@@ -54,7 +55,10 @@ export default function Deliveries({ target, toast }) {
   const cells = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => iso(new Date(month.getFullYear(), month.getMonth(), i + 1)))]
   while (cells.length % 7) cells.push(null)
   const dayList = byDate[day] || []
-  const upcoming = list.filter((d) => d.status === 'Scheduled' && d.delivery_date >= todayIso()).slice(0, 5)
+  // Searching lists every matching booking (any date); otherwise the next five.
+  const upcoming = q.trim()
+    ? list.filter((d) => matches(q, d.customer, d.phone, d.what, d.address, d.kind, d.notes, d.delivery_date)).slice(0, 30)
+    : list.filter((d) => d.status === 'Scheduled' && d.delivery_date >= todayIso()).slice(0, 5)
 
   async function save(e) {
     e.preventDefault()
@@ -98,7 +102,8 @@ export default function Deliveries({ target, toast }) {
     <>
       <div className="pagehead">
         <h1>Deliveries</h1>
-        <button className="btn primary" type="button" onClick={() => setForm(blank(day))}>Book delivery or collection</button>
+        <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search bookings" />
+        <button className="btn primary" type="button" onClick={() => setForm(blank(day))}>Book delivery or collection</button></div>
       </div>
       <ErrorNote error={error} />
 
@@ -168,9 +173,9 @@ export default function Deliveries({ target, toast }) {
               </div>
             </div>
           ))}
-          {upcoming.length > 0 && (
+          {(upcoming.length > 0 || q.trim()) && (
             <>
-              <div className="block-head"><h3>Coming up</h3></div>
+              <div className="block-head"><h3>{q.trim() ? `Found (${upcoming.length})` : 'Coming up'}</h3></div>
               <div className="card">
                 {upcoming.map((d) => (
                   <button key={d.id} type="button" className="up-row" onClick={() => { setDay(d.delivery_date); const x = new Date(`${d.delivery_date}T12:00:00`); setMonth(new Date(x.getFullYear(), x.getMonth(), 1)) }}>

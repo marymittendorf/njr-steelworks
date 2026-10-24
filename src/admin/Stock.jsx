@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote } from './ui.jsx'
+import { Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 import PartsStock from './PartsStock.jsx'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -15,6 +15,7 @@ export default function Stock({ go, toast, prices, me, reload, syncFromPrices })
   const [selling, setSelling] = useState(null) // { id, sold_to, sold_phone, sold_price, sold_on }
   const [adding, setAdding] = useState(null)
   const [showSold, setShowSold] = useState(false)
+  const [q, setQ] = useState('')
 
   const load = () => supabase.from('stock_items').select('*').order('built_on', { ascending: false })
     .then(({ data, error }) => { setItems(data || []); setError(error) })
@@ -22,8 +23,9 @@ export default function Stock({ go, toast, prices, me, reload, syncFromPrices })
 
   if (!items) return error ? <ErrorNote error={error} /> : <Loading />
 
-  const inStock = items.filter((i) => i.status === 'In stock')
-  const sold = items.filter((i) => i.status === 'Sold')
+  const found = items.filter((i) => matches(q, i.title, i.description, i.sold_to))
+  const inStock = found.filter((i) => i.status === 'In stock')
+  const sold = found.filter((i) => i.status === 'Sold')
   const value = inStock.reduce((a, i) => a + n(i.asking_price), 0)
 
   async function update(id, patch, msg) {
@@ -58,11 +60,12 @@ export default function Stock({ go, toast, prices, me, reload, syncFromPrices })
     <>
       <div className="pagehead">
         <h1>Stock</h1>
-        {!adding && <button className="btn" type="button" onClick={() => setAdding({ ...blankItem })}>Add existing stock</button>}
+        <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search stock" />
+          {!adding && <button className="btn" type="button" onClick={() => setAdding({ ...blankItem })}>Add existing stock</button>}</div>
       </div>
       <ErrorNote error={error} />
 
-      <PartsStock prices={prices} reload={reload} syncFromPrices={syncFromPrices} me={me} toast={toast} />
+      <PartsStock q={q} prices={prices} reload={reload} syncFromPrices={syncFromPrices} me={me} toast={toast} />
 
       <div className="block-head"><h3 style={{ fontSize: '1.6rem' }}>Finished trailers &amp; skips</h3></div>
 

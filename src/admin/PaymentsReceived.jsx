@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote, ListHead, SumStrip, rowProps } from './ui.jsx'
+import { Loading, ErrorNote, ListHead, SumStrip, rowProps, matches } from './ui.jsx'
 
 const VIEWS = ['This month', 'Last month', 'This year', 'All payments']
 const monthOf = (offset) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + offset); return d.toISOString().slice(0, 7) }
@@ -26,7 +26,7 @@ export default function PaymentsReceived({ go }) {
   const total = (rows) => rows.reduce((a, p) => a + n(p.amount), 0)
   const needle = q.trim().toLowerCase()
   const shown = list.filter(inView)
-    .filter((p) => !needle || [p.jobs?.customer, p.jobs?.invoice_no, p.reference, p.method].some((v) => String(v || '').toLowerCase().includes(needle)))
+    .filter((p) => matches(needle, p.jobs?.customer, p.jobs?.invoice_no, p.reference, p.method, p.amount))
 
   return (
     <>

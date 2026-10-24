@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, money0, shortDate } from '../format.js'
-import { ErrorNote } from './ui.jsx'
+import { ErrorNote, matches } from './ui.jsx'
 import PurchaseImport from './PurchaseImport.jsx'
 
 const blank = { id: '', name: '', unit: 'each', cost: '', kg: '', qty: '' }
@@ -10,13 +10,12 @@ const CALC_CODES = 'sq50, sq40, sq20, rhs76, ang40, ang50, ch100, fb50, sh16, sh
 
 // Parts & materials: the price list and the stock in one table. Cost is what you pay (excl. VAT),
 // On hand is how many you have. Buying (invoice upload or typed in) updates both.
-export default function PartsStock({ prices, reload, syncFromPrices, me, toast }) {
+export default function PartsStock({ q = '', prices, reload, syncFromPrices, me, toast }) {
   const [purchases, setPurchases] = useState([])
   const [error, setError] = useState(null)
   const [importing, setImporting] = useState(null) // 'file' | 'manual'
   const [showBuys, setShowBuys] = useState(false)
   const [adding, setAdding] = useState(null)
-  const [q, setQ] = useState('')
 
   const loadBuys = () => supabase.from('purchases').select('*, purchase_lines(description, qty, unit_cost)').order('invoice_date', { ascending: false }).limit(50)
     .then(({ data, error }) => { setPurchases(data || []); if (error) setError(error) })
@@ -47,7 +46,7 @@ export default function PartsStock({ prices, reload, syncFromPrices, me, toast }
 
   const value = prices.reduce((a, p) => a + n(p.qty_on_hand) * n(p.cost), 0)
   const needle = q.trim().toLowerCase()
-  const shown = prices.filter((p) => !needle || p.name.toLowerCase().includes(needle) || p.id.includes(needle))
+  const shown = prices.filter((p) => matches(needle, p.name, p.id, p.notes, p.unit))
 
   return (
     <div className="block">
@@ -76,7 +75,6 @@ export default function PartsStock({ prices, reload, syncFromPrices, me, toast }
         </form>
       )}
 
-      {prices.length > 8 && <input type="search" aria-label="Search parts" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search parts…" style={{ maxWidth: 300, marginBottom: 8 }} />}
       <div className="tbl-wrap"><table>
         <thead><tr><th>Item</th><th>Unit</th><th className="r">On hand</th><th className="r">Cost excl. VAT</th><th className="r">Value</th><th className="r">Mass (kg)</th><th>In use</th></tr></thead>
         <tbody>{shown.map((p) => (
@@ -92,7 +90,7 @@ export default function PartsStock({ prices, reload, syncFromPrices, me, toast }
               onBlur={(e) => n(e.target.value) !== n(p.kg) && saveRow(p, { kg: n(e.target.value) }, 'Mass updated')} /></td>
             <td><label className="check"><input type="checkbox" checked={p.active} onChange={(e) => saveRow(p, { active: e.target.checked }, e.target.checked ? 'Back in use' : 'Hidden from new quotes')} /> {p.active ? 'Yes' : 'Hidden'}</label></td>
           </tr>))}
-          {!shown.length && <tr><td colSpan="7" className="hint">No items yet.</td></tr>}
+          {!shown.length && <tr><td colSpan="7" className="hint">{prices.length ? 'No item matches your search.' : 'No items yet.'}</td></tr>}
         </tbody>
       </table></div>
       <p className="hint">Change "On hand" after a stock count or when parts are used. The website's instant price calculator uses items with these short codes: {CALC_CODES}.</p>

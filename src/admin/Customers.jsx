@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, n } from '../costing.js'
 import { money, money0, shortDate, waNumber } from '../format.js'
-import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps } from './ui.jsx'
+import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps, matches } from './ui.jsx'
 import { balanceOf, invoiceStatus, Statement } from './Invoices.jsx'
 import { quoteStatus } from './Jobs.jsx'
 import { blankJob } from './JobCosting.jsx'
@@ -50,7 +50,7 @@ export default function Customers({ settings, go, target, toast }) {
 
   const needle = q.trim().toLowerCase()
   const shown = customers.filter((c) => view === 'All customers' || c.owing > 0.5)
-    .filter((c) => !needle || [c.customer, c.phone, c.email].some((v) => String(v || '').toLowerCase().includes(needle)))
+    .filter((c) => matches(needle, c.customer, c.customer_company, c.phone, c.email, c.customer_vat, c.customer_address))
   const owing = customers.reduce((a, c) => a + c.owing, 0)
 
   return (

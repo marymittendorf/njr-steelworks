@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, shortDate } from '../format.js'
-import { Loading, ErrorNote } from './ui.jsx'
+import { Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 import ExpenseForm from './ExpenseForm.jsx'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -11,6 +11,7 @@ const CASH_METHODS = ['Petty cash', 'Cash'] // 'Cash' = older expenses captured 
 
 // The cash box: top-ups in, slips out (each slip is also an expense), and regular counts.
 export default function PettyCash({ me, toast }) {
+  const [q, setQ] = useState('')
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [topup, setTopup] = useState(null)
@@ -118,11 +119,11 @@ export default function PettyCash({ me, toast }) {
 
       <div className="block"><ExpenseForm toast={toast} onSaved={load} paymentMethod="Petty cash" heading="Pay from petty cash" /></div>
 
-      <div className="block-head"><h3>Cash book</h3></div>
+      <div className="block-head"><h3>Cash book</h3><SearchBox q={q} setQ={setQ} label="Search cash book" /></div>
       <div className="tbl-wrap"><table>
         <thead><tr><th>Date</th><th>What</th><th className="r">In</th><th className="r">Out</th><th className="r">Balance</th><th>Slip</th></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.filter((r) => matches(q, r.what, r.sub, r.inn, r.out)).map((r) => (
             <tr key={r.id}>
               <td className="num" style={{ whiteSpace: 'nowrap' }}>{shortDate(r.date)}</td>
               <td>{r.what}{r.sub && <div className="hint" style={{ fontSize: '.85rem' }}>{r.sub}</div>}</td>

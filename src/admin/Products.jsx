@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n, productCost, suggestedPrice, marginAt, ratesFrom } from '../costing.js'
 import { money, money0 } from '../format.js'
-import { Loading, ErrorNote, PartPicker } from './ui.jsx'
+import { Loading, ErrorNote, PartPicker, SearchBox, matches } from './ui.jsx'
 import PartsPickList from './PartsPickList.jsx'
 
 const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
@@ -25,6 +25,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
   const [list, setList] = useState(null)
   const [error, setError] = useState(null)
   const [edit, setEdit] = useState(null)
+  const [q, setQ] = useState('')
   const rates = ratesFrom(settings)
 
   const load = () => supabase.from('products').select('*').order('category').order('sort').order('name')
@@ -38,13 +39,14 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
     <>
       <div className="pagehead">
         <h1>Products</h1>
-        <button className="btn primary" type="button" onClick={() => setEdit(blankProduct(n(settings.markup)))}>New product</button>
+        <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search products" />
+        <button className="btn primary" type="button" onClick={() => setEdit(blankProduct(n(settings.markup)))}>New product</button></div>
       </div>
       <ErrorNote error={error} />
       {!list.length ? <div className="card hint">No products yet. Click "New product", e.g. "2 m³ skip": add its parts from your parts list and the workshop hours, and the app suggests a price.</div> : (
         <div className="tbl-wrap"><table>
           <thead><tr><th>Product</th><th className="r">Costs you</th><th className="r">Suggested</th><th className="r">Your price</th><th className="r">Margin</th><th>Website</th></tr></thead>
-          <tbody>{list.map((p) => {
+          <tbody>{list.filter((p) => matches(q, p.name, p.category, p.spec)).map((p) => {
             const pc = productCost(p, prices, rates)
             const sug = suggestedPrice(pc.cost, p.markup ?? settings.markup, rates.vat)
             const m = marginAt(p.price_incl, pc.cost, rates.vat)
