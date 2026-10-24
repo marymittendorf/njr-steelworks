@@ -24,6 +24,7 @@ export function blankJob(settings) {
 
 export default function JobCosting({ target, settings, prices, toast, go, me }) {
   const [confirmDel, setConfirmDel] = useState(false)
+  const [confirmConvert, setConfirmConvert] = useState(false)
   const [showPhotos, setShowPhotos] = useState(false)
   const [catalogue, setCatalogue] = useState([])
   const settingsRates = ratesFrom(settings)
@@ -77,13 +78,15 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     setJob((j) => ({ ...j, products: [...(j.products || []), line], mats: (j.mats || []).filter((m) => m.supplied_by === 'Client'), labour: [], extras: [], units: 1, galv: false }))
   }
 
-  async function save() {
-    if (!job.customer.trim()) { setError('Add the customer name before saving.'); return null }
-    const title = job.title.trim() || lines[0]?.name?.trim() || ''
+  // patch: changes to save along with the form, e.g. { status: 'Received' } to convert to an invoice.
+  async function save(patch) {
+    const j = patch && !patch.nativeEvent ? { ...job, ...patch } : job
+    if (!j.customer.trim()) { setError('Add the customer name before saving.'); return null }
+    const title = j.title.trim() || lines[0]?.name?.trim() || ''
     if (!title) { setError('Add a job description, or a line, before saving.'); return null }
     if (lines.some((l) => !String(l.name || '').trim())) { setError('Every line needs a description.'); return null }
     setBusy(true); setError(null)
-    const payload = Object.fromEntries(JOB_FIELDS.filter((k) => k in job).map((k) => [k, job[k]]))
+    const payload = Object.fromEntries(JOB_FIELDS.filter((k) => k in j).map((k) => [k, j[k]]))
     payload.title = title
     for (const k of ['customer_company', 'customer_address', 'customer_vat']) payload[k] = String(payload[k] || '').trim() || null
     payload.units = Math.max(1, Math.round(n(payload.units)) || 1)
@@ -92,18 +95,25 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     payload.labour = (payload.labour || []).map((l) => ({ ...l, hours: n(l.hours) }))
     payload.extras = (payload.extras || []).map((x) => ({ ...x, amount: n(x.amount) }))
     payload.products = lines.map((x) => ({ ...x, name: x.name.trim(), qty: Math.max(1, n(x.qty)), price_incl: n(x.price_incl), cost_excl: n(x.cost_excl) }))
-    Object.assign(payload, stampsFor(job, payload.status)) // date-stamp the order timeline
+    Object.assign(payload, stampsFor(j, payload.status)) // date-stamp the order timeline
     let res
-    if (job.id) res = await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', job.id).select().single()
+    if (j.id) res = await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', j.id).select().single()
     else res = await supabase.from('jobs').insert(payload).select().single()
     setBusy(false)
     if (res.error) { setError(res.error); return null }
-    if (!job.id && job.request_id) await supabase.from('requests').update({ status: 'Quoted' }).eq('id', job.request_id)
+    if (!j.id && j.request_id) await supabase.from('requests').update({ status: 'Quoted' }).eq('id', j.request_id)
     await ensureStockItem(res.data)
     res.data = await syncInvoiceTotals(res.data)
     setJob(res.data)
-    toast(!job.invoice_no && res.data.invoice_no ? `Received: invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
+    toast(!j.invoice_no && res.data.invoice_no ? `Invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
     return res.data
+  }
+
+  // Convert to invoice: the customer accepted, so the stage becomes Received and the database issues the invoice number.
+  async function convertToInvoice() {
+    const saved = await save({ status: 'Received' })
+    setConfirmConvert(false)
+    if (saved?.invoice_no) go('invoices', { jobId: saved.id })
   }
 
   async function deleteJob() {
@@ -227,6 +237,9 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           {noCost > 0 && <div className="row hint" style={{ color: 'var(--warn)' }}>{noCost} line{noCost > 1 ? 's have' : ' has'} no cost, so profit looks higher than it is.</div>}
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
+            {!job.invoice_no && (job.job_type || 'Customer job') === 'Customer job' && ['Draft', 'Quote sent'].includes(job.status) && (confirmConvert
+              ? <button className="btn primary" type="button" disabled={busy} onClick={convertToInvoice}>Confirm: make invoice</button>
+              : <button className="btn" type="button" disabled={busy} onClick={() => setConfirmConvert(true)} title="The customer accepted: issue the invoice and move the job to Orders">Convert to invoice</button>)}
             <button className="btn" type="button" disabled={busy} onClick={() => openDoc('email')}>Email {job.invoice_no ? 'invoice' : 'quote'}</button>
             <button className="btn" type="button" disabled={busy} onClick={() => openDoc('view')}>View / print</button>
             {job.id && <button className="btn" type="button" onClick={() => setShowPhotos(true)}>Photos &amp; hand-in</button>}
