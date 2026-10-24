@@ -157,7 +157,7 @@ export default function Banking({ me, toast, go }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Banking</h1><p>Upload a bank statement. Money in is matched to invoices; money out goes to Expenses to check.</p></div>
+        <h1>Banking</h1>
         {accounts.length > 0 && !upload && <button className="btn primary" type="button" onClick={() => setUpload({ account_id: accounts[0].id })}>Upload statement</button>}
       </div>
       <ErrorNote error={error} />

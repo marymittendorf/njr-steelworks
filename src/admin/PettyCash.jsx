@@ -71,7 +71,7 @@ export default function PettyCash({ me, toast }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Petty cash</h1><p>The cash box. Money put in, cash slips paid out (each one is also an expense), and counts.</p></div>
+        <h1>Petty cash</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" type="button" onClick={() => { setCount(null); setTopup({ date: today(), amount: '', source: 'Bank withdrawal', notes: '' }) }}>Money in</button>
           <button className="btn" type="button" onClick={() => { setTopup(null); setCount({ counted: '', notes: '' }) }}>Count the cash</button>

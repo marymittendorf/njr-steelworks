@@ -100,7 +100,7 @@ export default function Expenses({ toast, me }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Expenses</h1><p>What the business pays out, and the costs that come back every month or year.</p></div>
+        <h1>Expenses</h1>
       </div>
       <ErrorNote error={error} />
 

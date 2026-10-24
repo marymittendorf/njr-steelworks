@@ -1,60 +1,79 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, STATUSES } from '../costing.js'
-import { money, shortDate } from '../format.js'
-import { Pill, Loading, ErrorNote } from './ui.jsx'
+import { calc, n } from '../costing.js'
+import { addDays, money, money0, shortDate } from '../format.js'
+import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps } from './ui.jsx'
 
-export function JobsTable({ jobs, go }) {
-  if (!jobs.length) return <div className="card hint">No jobs here yet. Open a website request under Requests, or press New quote.</div>
-  return (
-    <div className="tbl-wrap"><table>
-      <thead><tr><th>Quote</th><th>Date</th><th>Customer</th><th>Job</th><th>Status</th><th className="r">Total incl. VAT</th><th className="r">Margin</th></tr></thead>
-      <tbody>
-        {jobs.map((j) => {
-          const t = calc(j)
-          const open = () => go('cost', { jobId: j.id })
-          return (
-            <tr key={j.id} className="clickable" tabIndex={0} onClick={open} onKeyDown={(e) => e.key === 'Enter' && open()}>
-              <td className="num">{j.quote_no}</td>
-              <td className="num">{shortDate(j.quote_date)}</td>
-              <td>{j.customer}</td>
-              <td>{j.title}{j.units > 1 && <span className="hint"> × {j.units}</span>}</td>
-              <td><Pill status={j.status} /></td>
-              <td className="r num">{money(t.total)}</td>
-              <td className="r num">{t.margin.toFixed(1)}%</td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table></div>
-  )
+const today = () => new Date().toISOString().slice(0, 10)
+const ACCEPTED = ['Received', 'In production', 'Ready', 'Delivered']
+
+// DRAFT, SENT, EXPIRED, ACCEPTED, DECLINED: what a quote's status reads as on the list.
+export function quoteStatus(j) {
+  if (j.status === 'Declined') return { text: j.invoice_voided_at ? 'Void' : 'Declined', tone: 'bad' }
+  if (ACCEPTED.includes(j.status)) return { text: j.invoice_no ? 'Invoiced' : 'Accepted', tone: 'good' }
+  if (j.status === 'Quote sent') {
+    const until = addDays(j.quote_date, n(j.rates?.validity) || 14)
+    return until < today() ? { text: 'Expired', tone: 'warn' } : { text: 'Sent', tone: 'info' }
+  }
+  return { text: 'Draft', tone: 'muted' }
+}
+
+const VIEWS = ['Drafts and sent', 'All quotes', 'Draft', 'Sent', 'Expired', 'Accepted', 'Declined']
+const inView = (view, j) => {
+  const s = quoteStatus(j).text
+  if (view === 'All quotes') return true
+  if (view === 'Drafts and sent') return ['Draft', 'Sent', 'Expired'].includes(s)
+  if (view === 'Accepted') return ['Accepted', 'Invoiced'].includes(s)
+  if (view === 'Declined') return ['Declined', 'Void'].includes(s)
+  return s === view
 }
 
 export default function Jobs({ go }) {
   const [jobs, setJobs] = useState(null)
   const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('Quotes')
+  const [view, setView] = useState('Drafts and sent')
+  const [q, setQ] = useState('')
 
   useEffect(() => {
-    supabase.from('jobs').select('*').order('created_at', { ascending: false })
+    supabase.from('jobs').select('*').order('quote_date', { ascending: false }).order('created_at', { ascending: false })
       .then(({ data, error }) => { setJobs(data || []); setError(error) })
   }, [])
 
-  const filters = ['Quotes', 'All', ...STATUSES]
-  const shown = (jobs || []).filter((j) =>
-    filter === 'All' ? true : filter === 'Quotes' ? ['Draft', 'Quote sent'].includes(j.status) : j.status === filter)
+  if (!jobs) return error ? <ErrorNote error={error} /> : <Loading />
+
+  const rows = jobs.map((j) => ({ j, t: calc(j), st: quoteStatus(j) }))
+  const month = today().slice(0, 7)
+  const waiting = rows.filter((x) => x.st.text === 'Sent')
+  const drafts = rows.filter((x) => x.st.text === 'Draft')
+  const wonMonth = rows.filter((x) => ['Accepted', 'Invoiced'].includes(x.st.text) && (x.j.invoice_date || x.j.accepted_at || '').slice(0, 7) === month)
+  const sum = (list) => list.reduce((a, x) => a + x.t.total, 0)
+  const needle = q.trim().toLowerCase()
+  const shown = rows.filter(({ j }) => inView(view, j))
+    .filter(({ j }) => !needle || [j.quote_no, j.invoice_no, j.customer, j.phone, j.title].some((v) => String(v || '').toLowerCase().includes(needle)))
 
   return (
     <>
-      <div className="pagehead">
-        <div><h1>Quotes</h1><p>Drafts and quotes waiting for the customer. Accepted quotes (stage Received) move to Orders. Click a row to open it.</p></div>
-        <button className="btn primary" type="button" onClick={() => go('cost', null)}>New quote</button>
-      </div>
-      <div className="filters" role="group" aria-label="Filter by status">
-        {filters.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>)}
-      </div>
+      <ListHead views={VIEWS} view={view} setView={setView} q={q} setQ={setQ} searchLabel="Search quotes" onNew={() => go('cost', null)} />
       <ErrorNote error={error} />
-      {jobs === null ? <Loading /> : <JobsTable jobs={shown} go={go} />}
+      <SumStrip items={[
+        ['Drafts', String(drafts.length), () => setView('Draft')],
+        ['Waiting for the customer', money0(sum(waiting)), () => setView('Sent')],
+        ['Accepted this month', money0(sum(wonMonth)), () => setView('Accepted')],
+      ]} />
+      {!shown.length ? <div className="card hint">{jobs.length ? 'No quotes in this view.' : 'No quotes yet. Press + New, or open a website request.'}</div> : (
+        <div className="tbl-wrap"><table>
+          <thead><tr><th>Date</th><th>Quote #</th><th>Customer</th><th>Item</th><th>Status</th><th className="r">Amount</th></tr></thead>
+          <tbody>{shown.map(({ j, t, st }) => (
+            <tr key={j.id} {...rowProps(() => go('cost', { jobId: j.id }))}>
+              <td className="num">{shortDate(j.quote_date)}</td>
+              <td className="num lnk">{j.quote_no}</td>
+              <td>{j.customer}</td>
+              <td>{j.title}</td>
+              <td><Status text={st.text} tone={st.tone} /></td>
+              <td className="r num">{money(t.total)}</td>
+            </tr>))}</tbody>
+        </table></div>
+      )}
     </>
   )
 }

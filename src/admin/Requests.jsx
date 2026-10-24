@@ -64,7 +64,7 @@ export default function Requests({ settings, prices, go, refreshCount }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Requests</h1><p>Quote requests from the website. Cost one to turn it into a quote.</p></div>
+        <h1>Website requests</h1>
         <label className="check"><input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show quoted &amp; declined</label>
       </div>
       <ErrorNote error={error} />

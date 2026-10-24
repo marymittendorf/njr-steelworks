@@ -57,7 +57,7 @@ export default function Stock({ go, toast, prices, me, reload, syncFromPrices })
   return (
     <>
       <div className="pagehead">
-        <div><h1>Stock</h1><p>Parts and materials you've bought, and finished trailers and skips in the yard.</p></div>
+        <h1>Stock</h1>
         {!adding && <button className="btn" type="button" onClick={() => setAdding({ ...blankItem })}>Add existing stock</button>}
       </div>
       <ErrorNote error={error} />

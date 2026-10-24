@@ -16,6 +16,9 @@ import PettyCash from './PettyCash.jsx'
 import Settings from './Settings.jsx'
 import Gallery from './Gallery.jsx'
 import Staff from './Staff.jsx'
+import Customers from './Customers.jsx'
+import PaymentsReceived from './PaymentsReceived.jsx'
+import Reports from './Reports.jsx'
 import { Loading } from './ui.jsx'
 
 export default function AdminApp() {
@@ -32,23 +35,17 @@ export default function AdminApp() {
   return <StaffShell session={session} />
 }
 
-const PAGES = [
-  ['dash', 'Dashboard'],
-  ['requests', 'Requests'],
-  ['jobs', 'Quotes'],
-  ['orders', 'Orders'],
-  ['invoices', 'Invoices'],
-  ['banking', 'Banking'],
-  ['deliveries', 'Deliveries'],
-  ['products', 'Products'],
-  ['stock', 'Stock'],
-  ['cost', 'Quote'], // opened from Quotes, not shown in the menu
-  ['expenses', 'Expenses'],
-  ['petty', 'Petty cash'],
-  ['gallery', 'Website photos'],
-  ['settings', 'Rates & settings'],
-  ['staff', 'Staff'], // owners only
+// The menu, grouped like Zoho Books. [group label | null, [[page, label], …]]
+const MENU = [
+  [null, [['dash', 'Home']]],
+  ['Sales', [['requests', 'Website requests'], ['customers', 'Customers'], ['jobs', 'Quotes'], ['orders', 'Orders'], ['deliveries', 'Deliveries'], ['invoices', 'Invoices'], ['payments', 'Payments received']]],
+  ['Purchases', [['stock', 'Stock'], ['expenses', 'Expenses'], ['petty', 'Petty cash']]],
+  ['Money', [['banking', 'Banking'], ['reports', 'Reports']]],
+  ['Setup', [['products', 'Products'], ['gallery', 'Website photos'], ['settings', 'Settings'], ['staff', 'Staff']]], // Staff: owners only
 ]
+// 'cost' (a quote) is opened from Quotes and isn't in the menu.
+const PAGES = [...MENU.flatMap(([, items]) => items), ['cost', 'Quote']]
+const MENU_FOR = { cost: 'jobs' } // which menu item stays lit
 
 const pageFromHash = () => {
   const raw = window.location.hash.replace('#', '')
@@ -63,6 +60,7 @@ function StaffShell({ session }) {
   const [page, setPage] = useState(pageFromHash)
   const [costTarget, setCostTarget] = useState(null) // {jobId} | {draft} | {} = new blank, plus a nonce
   const [invoiceTarget, setInvoiceTarget] = useState(null) // {jobId}: open that invoice
+  const [customerTarget, setCustomerTarget] = useState(null) // {name}: open that customer
   const [deliveryTarget, setDeliveryTarget] = useState(null) // {jobId} | {stockItemId}: open a booking form
   const [newCount, setNewCount] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
@@ -114,6 +112,7 @@ function StaffShell({ session }) {
     // A fresh nonce each time remounts the costing screen, so "New costing" always starts clean.
     if (p === 'cost') setCostTarget({ ...(target || {}), nonce: Date.now() })
     if (p === 'invoices') setInvoiceTarget(target ? { ...target, nonce: Date.now() } : null)
+    if (p === 'customers') setCustomerTarget(target ? { ...target, nonce: Date.now() } : null)
     if (p === 'deliveries') setDeliveryTarget(target ? { ...target, nonce: Date.now() } : null)
     if (window.location.hash !== '#' + p) window.location.hash = p
     setPage(p)
@@ -141,11 +140,16 @@ function StaffShell({ session }) {
     <div className="admin">
       <nav className="side" aria-label="Back end">
         <a className="brand" href="/"><img src="/logo.webp" alt="" /><b>NJR <span>ADMIN</span></b></a>
-        {PAGES.filter(([k]) => k !== 'cost' && (k !== 'staff' || staff.role === 'owner')).map(([k, label]) => (
-          <button key={k} type="button" aria-current={page === k || (k === 'jobs' && page === 'cost') ? 'page' : undefined}
-            onClick={() => go(k)}>
-            {label}{k === 'requests' && newCount > 0 && <span className="count">{newCount}</span>}
-          </button>
+        {MENU.map(([group, items]) => (
+          <div key={group || 'top'} style={{ display: 'contents' }}>
+            {group && <div className="grp">{group}</div>}
+            {items.filter(([k]) => k !== 'staff' || staff.role === 'owner').map(([k, label]) => (
+              <button key={k} type="button" className={group ? '' : 'top'} aria-current={(MENU_FOR[page] || page) === k ? 'page' : undefined}
+                onClick={() => go(k)}>
+                {label}{k === 'requests' && newCount > 0 && <span className="count">{newCount}</span>}
+              </button>
+            ))}
+          </div>
         ))}
         <div className="who">
           <span>Signed in as <b style={{ color: 'var(--fg)' }}>{staff.name}</b></span>
@@ -165,6 +169,9 @@ function StaffShell({ session }) {
             {page === 'products' && <Products {...props} syncFromPrices={syncFromPrices} />}
             {page === 'stock' && <Stock {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}
             {page === 'cost' && <JobCosting key={costTarget?.nonce || 'new'} target={costTarget} {...props} />}
+            {page === 'customers' && <Customers key={customerTarget?.nonce || 'cust'} target={customerTarget} {...props} />}
+            {page === 'payments' && <PaymentsReceived {...props} />}
+            {page === 'reports' && <Reports {...props} />}
             {page === 'expenses' && <Expenses {...props} />}
             {page === 'petty' && <PettyCash {...props} me={staff} />}
             {page === 'gallery' && <Gallery {...props} />}

@@ -36,7 +36,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
   return (
     <>
       <div className="pagehead">
-        <div><h1>Products</h1><p>Finished items you sell, set up once: what goes into each one, what it costs you, and your price. Quotes then just say "1 × 2 m³ skip".</p></div>
+        <h1>Products</h1>
         <button className="btn primary" type="button" onClick={() => setEdit(blank(n(settings.markup)))}>New product</button>
       </div>
       <ErrorNote error={error} />

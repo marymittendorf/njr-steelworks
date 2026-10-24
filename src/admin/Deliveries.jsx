@@ -97,7 +97,7 @@ export default function Deliveries({ target, toast }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Deliveries</h1><p>Deliveries and collections by day. The customer signs on this screen when it's done.</p></div>
+        <h1>Deliveries</h1>
         <button className="btn primary" type="button" onClick={() => setForm(blank(day))}>Book delivery or collection</button>
       </div>
       <ErrorNote error={error} />

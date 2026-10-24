@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, fromTemplate, ratesFrom } from '../costing.js'
+import { calc, ratesFrom, templateLine } from '../costing.js'
 import { ORDER_STAGES, isStockBuild, moveJob, nextStep, shortStamp } from '../orders.js'
 import { balanceOf, invoiceState } from './Invoices.jsx'
-import { money } from '../format.js'
-import { Pill, Loading, ErrorNote } from './ui.jsx'
+import { money, money0 } from '../format.js'
+import { Pill, Loading, ErrorNote, ListHead, SumStrip } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
 import JobFile from './JobFile.jsx'
 import PartsChecklist, { jobParts } from './PartsChecklist.jsx'
 
-const TABS = [
-  ['Received', 'Received'],
-  ['In production', 'In production'],
-  ['Ready', 'Ready'],
-  ['Delivered', 'Delivered'],
-  ['all', 'All orders'],
-]
+const VIEWS = ['Open orders', 'Received', 'In production', 'Ready', 'Delivered', 'All orders']
+const inView = (view, j) => view === 'All orders' || (view === 'Open orders' ? j.status !== 'Delivered' : j.status === view)
 
 export default function Orders({ settings, prices, go, toast, me }) {
   const [photosFor, setPhotosFor] = useState(null)
@@ -23,7 +18,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
   const [jobs, setJobs] = useState(null)
   const [stockCount, setStockCount] = useState(0)
   const [error, setError] = useState(null)
-  const [tab, setTab] = useState('Received')
+  const [tab, setTab] = useState('Open orders')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(null)
   const [importing, setImporting] = useState(false)
@@ -42,7 +37,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
   const count = (stage) => jobs.filter((j) => j.status === stage).length
   const needle = q.trim().toLowerCase()
   const shown = jobs
-    .filter((j) => tab === 'all' || j.status === tab)
+    .filter((j) => inView(tab, j))
     .filter((j) => !needle || [j.customer, j.quote_no, j.invoice_no, j.title, j.phone].some((v) => String(v || '').toLowerCase().includes(needle)))
 
   async function advance(job, status, label) {
@@ -58,7 +53,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
   function newStockBuild() {
     go('cost', {
       draft: {
-        ...fromTemplate('trailer', prices.filter((p) => p.active)),
+        title: '', mats: [], labour: [], extras: [], products: [templateLine('trailer', prices.filter((p) => p.active), ratesFrom(settings), settings.markup)],
         customer: 'Stock build', phone: '', email: '', notes: '', units: 1, galv: false,
         markup: settings.markup, status: 'Received', job_type: 'Built for stock', payment_status: 'Paid',
         request_id: null, rates: ratesFrom(settings),
@@ -68,40 +63,21 @@ export default function Orders({ settings, prices, go, toast, me }) {
 
   return (
     <>
-      <div className="pagehead">
-        <div><h1>Orders</h1><p>Jobs from received to delivered. Double-click a row to open its costing.</p></div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn primary" type="button" onClick={() => setImporting(true)}>Upload PDF quote</button>
-          <button className="btn" type="button" onClick={newStockBuild}>Add stock build</button>
-          <button className="btn" type="button" onClick={() => go('jobs')}>Quotes</button>
-        </div>
-      </div>
+      <ListHead views={VIEWS} view={tab} setView={setTab} q={q} setQ={setQ} searchLabel="Search orders">
+        <button className="btn" type="button" onClick={() => setImporting(true)}>Upload PDF quote</button>
+        <button className="btn" type="button" onClick={newStockBuild}>Add stock build</button>
+      </ListHead>
       <ErrorNote error={error} />
-
-      <div className="kpis">
-        {[['Received', 'Received, not started'], ['In production', 'In production'], ['Ready', 'Ready for delivery']].map(([stage, label]) => (
-          <button key={stage} type="button" className={`kpi kpi-btn${tab === stage ? ' on' : ''}`} onClick={() => setTab(stage)}>
-            <span className="label">{label}</span><b className="num">{count(stage)}</b>
-          </button>
-        ))}
-        <button type="button" className="kpi kpi-btn" onClick={() => go('stock')}>
-          <span className="label">Stock on hand</span><b className="num">{stockCount}</b><span className="sub">Finished, in the yard</span>
-        </button>
-      </div>
-
-      <div className="block-head" style={{ alignItems: 'flex-end' }}>
-        <div className="filters" role="group" aria-label="Show orders" style={{ marginBottom: 0 }}>
-          {TABS.map(([k, label]) => (
-            <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)}>
-              {label} <span className="hint">({k === 'all' ? jobs.length : count(k)})</span>
-            </button>
-          ))}
-        </div>
-        <input aria-label="Search orders" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customer, invoice or quote no., job…" style={{ maxWidth: 300 }} />
-      </div>
+      <SumStrip items={[
+        ['Received, not started', String(count('Received')), () => setTab('Received')],
+        ['In production', String(count('In production')), () => setTab('In production')],
+        ['Ready', String(count('Ready')), () => setTab('Ready')],
+        ['Still to be paid', money0(jobs.filter((j) => j.invoice_no && !j.invoice_voided_at).reduce((a, j) => a + balanceOf(j), 0)), () => go('invoices')],
+        ['Finished stock in the yard', String(stockCount), () => go('stock')],
+      ]} />
 
       {!shown.length ? (
-        <div className="card hint">{jobs.length ? 'No orders here.' : 'No orders yet. When a quote is accepted (stage Received) it shows up here.'}</div>
+        <div className="card hint">{jobs.length ? 'No orders in this view.' : 'No orders yet. When a quote is accepted (stage Received) it shows up here.'}</div>
       ) : (
         <div className="tbl-wrap"><table>
           <thead><tr><th>Stage</th><th>Customer</th><th>Job</th><th>Payment</th><th>Timeline</th><th className="r">Total</th></tr></thead>
@@ -110,7 +86,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
               const step = nextStep(j)
               const stock = isStockBuild(j)
               return (
-                <tr key={j.id} onDoubleClick={() => go('cost', { jobId: j.id })} title="Double-click to open the costing">
+                <tr key={j.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <Pill status={j.status} />
                     {step && <div style={{ marginTop: 6 }}>
@@ -124,7 +100,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
                   </td>
                   <td>{stock ? <span className="hint">Stock build</span> : <>{j.customer}<div className="hint">{j.phone}</div></>}</td>
                   <td>
-                    <b>{j.title}</b>{j.units > 1 && <span className="hint"> × {j.units}</span>}
+                    <button className="linkbtn lnk" type="button" style={{ textDecoration: 'none', fontSize: '1rem' }} onClick={() => go('cost', { jobId: j.id })}><b>{j.title}</b></button>{j.units > 1 && <span className="hint"> × {j.units}</span>}
                     <div className="hint num">{j.invoice_no ? `${j.invoice_no} · ${j.quote_no}` : j.quote_no}</div>
                   </td>
                   <td>
@@ -147,7 +123,6 @@ export default function Orders({ settings, prices, go, toast, me }) {
       {partsFor && <PartsChecklist job={partsFor} toast={toast} onClose={() => setPartsFor(null)} onSaved={(updated) => { setJobs((list) => list.map((x) => (x.id === updated.id ? updated : x))); setPartsFor(null) }} />}
       {photosFor && <JobFile job={photosFor} me={me} toast={toast} onClose={() => setPhotosFor(null)} />}
       {importing && <ImportQuote settings={settings} onClose={() => setImporting(false)} onCreated={(job) => { setImporting(false); setTab(job.status); toast(`Order created for ${job.customer}: invoice ${job.invoice_no}`); load() }} />}
-      <p className="hint">Tip: double-click any row to open it. Setting a quote to Received on the costing screen puts it here.</p>
     </>
   )
 }

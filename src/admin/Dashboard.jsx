@@ -2,75 +2,67 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc } from '../costing.js'
 import { money0 } from '../format.js'
-import { JobsTable } from './Jobs.jsx'
-import { Loading } from './ui.jsx'
+import { Loading, SumStrip, rowProps } from './ui.jsx'
+import { balanceOf, invoiceStatus } from './Invoices.jsx'
+import { quoteStatus } from './Jobs.jsx'
+import { jobParts } from './PartsChecklist.jsx'
 
-const SEGMENTS = [
-  ['Materials', 'm', 'var(--steel)'],
-  ['Labour & consumables', 'l', 'var(--accent)'],
-  ['Overhead', 'o', 'var(--info)'],
-  ['Profit', 'p', 'var(--good)'],
-]
-
-export default function Dashboard({ go }) {
-  const [jobs, setJobs] = useState(null)
-  const [newReq, setNewReq] = useState(0)
+// Home: the numbers that matter and a short list of what needs doing, each one click away.
+export default function Dashboard({ go, settings, prices }) {
+  const [d, setD] = useState(null)
 
   useEffect(() => {
-    supabase.from('jobs').select('*').order('created_at', { ascending: false }).then(({ data }) => setJobs(data || []))
-    supabase.from('requests').select('id', { count: 'exact', head: true }).eq('status', 'New').then(({ count }) => setNewReq(count || 0))
+    Promise.all([
+      supabase.from('jobs').select('*'),
+      supabase.from('requests').select('id', { count: 'exact', head: true }).eq('status', 'New'),
+      supabase.from('bank_lines').select('id', { count: 'exact', head: true }).eq('status', 'unallocated'),
+    ]).then(([j, r, b]) => setD({ jobs: j.data || [], newReq: r.count || 0, bankOpen: b.count || 0 }))
   }, [])
 
-  if (!jobs) return <Loading />
+  if (!d) return <Loading />
 
-  const rows = jobs.map((j) => ({ j, t: calc(j) }))
-  const sum = (a) => a.reduce((s, x) => s + x.t.total, 0)
-  const awaiting = rows.filter((x) => x.j.status === 'Quote sent')
-  const onHand = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready'].includes(x.j.status))
-  const owed = rows.filter((x) => x.j.invoice_no && !x.j.invoice_voided_at && Number(x.j.invoice_total) - Number(x.j.amount_paid) > 0.5)
-  const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready', 'Delivered'].includes(x.j.status))
-  const avgMargin = won.length ? won.reduce((a, x) => a + x.t.margin, 0) / won.length : 0
-  const agg = won.reduce((a, { j, t }) => {
-    let m = 0, l = 0, o = 0
-    for (const pl of j.products || []) {
-      const q = Number(pl.qty) || 1
-      const parts = (pl.parts || []).filter((x) => x.supplied_by !== 'Client').reduce((s, x) => s + Number(x.qty) * Number(x.cost || 0), 0) * q
-      const time = (pl.labour || []).reduce((s, x) => s + Number(x.hours || 0), 0) * (Number(j.rates.labour) + Number(j.rates.consumables)) * q
-      m += parts; l += time; o += Math.max(0, Number(pl.cost_excl || 0) * q - parts - time)
-    }
-    return { m: a.m + m + t.materials + t.galv + t.extras, l: a.l + l + t.labour + t.consumables, o: a.o + o + t.overhead, p: a.p + t.markup }
-  }, { m: 0, l: 0, o: 0, p: 0 })
-  const tot = agg.m + agg.l + agg.o + agg.p
+  const month = new Date().toISOString().slice(0, 7)
+  const jobs = d.jobs
+  const sent = jobs.filter((j) => quoteStatus(j).text === 'Sent')
+  const expired = jobs.filter((j) => quoteStatus(j).text === 'Expired')
+  const invoices = jobs.filter((j) => j.invoice_no && !j.invoice_voided_at)
+  const owing = invoices.reduce((a, j) => a + balanceOf(j), 0)
+  const overdue = invoices.filter((j) => invoiceStatus(j, settings).overdue > 0)
+  const monthInv = invoices.filter((j) => (j.invoice_date || '').slice(0, 7) === month).map(calc)
+  const profit = monthInv.reduce((a, t) => a + t.excl - t.cost, 0)
+  const open = jobs.filter((j) => ['Received', 'In production'].includes(j.status))
+  const short = open.filter((j) => { const p = jobParts(j); return p.length && p.some((x) => !x.have) })
+  const ready = jobs.filter((j) => j.status === 'Ready' && j.job_type !== 'Built for stock')
+  const noPrice = prices.filter((p) => p.active && !Number(p.cost))
+  const s = (k, one, many) => `${k} ${k === 1 ? one : many}`
+
+  const todo = [
+    d.newReq && [s(d.newReq, 'new website request', 'new website requests'), 'requests'],
+    overdue.length && [`${s(overdue.length, 'invoice is', 'invoices are')} overdue (${money0(overdue.reduce((a, j) => a + balanceOf(j), 0))})`, 'invoices'],
+    short.length && [`${s(short.length, 'order is', 'orders are')} still waiting for parts`, 'orders'],
+    ready.length && [`${s(ready.length, 'job is', 'jobs are')} ready for delivery or collection`, 'orders'],
+    expired.length && [`${s(expired.length, 'quote has', 'quotes have')} expired without an answer`, 'jobs'],
+    d.bankOpen && [`${s(d.bankOpen, 'bank line needs', 'bank lines need')} matching`, 'banking'],
+    noPrice.length && [`${s(noPrice.length, 'stock item has', 'stock items have')} no price yet`, 'stock'],
+  ].filter(Boolean)
 
   return (
     <>
-      <div className="pagehead">
-        <div><h1>Dashboard</h1><p>Workshop overview. Amounts include VAT.</p></div>
-        <button className="btn primary" type="button" onClick={() => go('cost', null)}>New quote</button>
-      </div>
-      <div className="kpis">
-        <button type="button" className="kpi" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => go('requests')}>
-          <span className="label">New requests</span><b className="num">{newReq}</b><span className="sub">From the website form</span></button>
-        <div className="kpi"><span className="label">Quotes awaiting reply</span><b className="num">{awaiting.length}</b><span className="sub num">{money0(sum(awaiting))}</span></div>
-        <button type="button" className="kpi kpi-btn" onClick={() => go('orders')}><span className="label">Work on hand</span><b className="num">{onHand.length}</b><span className="sub num">{money0(sum(onHand))}</span></button>
-        <button type="button" className="kpi kpi-btn" onClick={() => go('invoices')}><span className="label">Invoiced, unpaid</span><b className="num">{owed.length}</b><span className="sub num">{money0(owed.reduce((a, x) => a + Number(x.j.invoice_total) - Number(x.j.amount_paid), 0))} owing</span></button>
-      </div>
-      {tot > 0 && (
-        <div className="card block">
-          <div className="block-head"><h3>Where the money goes on won work</h3><span className="hint num">{money0(tot)} excl. VAT · avg margin {avgMargin.toFixed(1)}%</span></div>
-          <div className="bar" role="img" aria-label="Split of won work into materials, labour, overhead and profit">
-            {SEGMENTS.map(([, k, c]) => <i key={k} style={{ width: `${(agg[k] / tot) * 100}%`, background: c }} />)}
-          </div>
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 10, fontSize: '.9rem' }}>
-            {SEGMENTS.map(([label, k, c]) => (
-              <span key={k}><i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: c, marginRight: 6 }} />
-                {label} <b className="num">{((agg[k] / tot) * 100).toFixed(0)}%</b></span>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="block-head"><h3>Quotes waiting for the customer</h3><button className="btn small" type="button" onClick={() => go('jobs')}>All quotes</button></div>
-      <JobsTable jobs={jobs.filter((j) => ['Draft', 'Quote sent'].includes(j.status))} go={go} />
+      <div className="lh"><h1>Home</h1><div className="lh-tools"><button className="btn primary" type="button" onClick={() => go('cost', null)}>+ New quote</button></div></div>
+      <SumStrip items={[
+        ['Website requests', String(d.newReq), () => go('requests')],
+        ['Quotes waiting', money0(sent.reduce((a, j) => a + calc(j).total, 0)), () => go('jobs')],
+        ['Customers owe', money0(owing), () => go('invoices'), overdue.length ? 'warn' : null],
+        ['Profit this month', money0(profit), () => go('reports')],
+      ]} />
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Needs attention</th><th /></tr></thead>
+        <tbody>
+          {todo.map(([text, page]) => (
+            <tr key={text} {...rowProps(() => go(page))}><td>{text}</td><td className="r lnk">Open</td></tr>))}
+          {!todo.length && <tr><td colSpan="2" className="hint">Nothing waiting. All up to date.</td></tr>}
+        </tbody>
+      </table></div>
     </>
   )
 }

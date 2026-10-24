@@ -12,7 +12,7 @@ export const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding
 
 const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'category', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
 
-function blankJob(settings) {
+export function blankJob(settings) {
   return {
     // A quote is a list of lines: products, and NJR's own lines for one-off work.
     title: '', category: null, mats: [], labour: [], extras: [], products: [],

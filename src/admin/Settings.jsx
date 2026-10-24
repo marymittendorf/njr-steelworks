@@ -15,6 +15,7 @@ const RATE_FIELDS = [
   ['galv', 'Galvanising (R/kg)', 'Outsourced hot-dip rate'],
   ['validity', 'Quote valid (days)', 'Printed on quotes'],
   ['deposit', 'Deposit (%)', 'Required to book work'],
+  ['payment_terms', 'Payment terms (days)', '0 = due on receipt; sets invoice due dates'],
 ]
 
 export default function Settings({ settings, prices, syncFromPrices, toast, me }) {
@@ -38,6 +39,7 @@ export default function Settings({ settings, prices, syncFromPrices, toast, me }
     e.preventDefault()
     setBusy(true)
     const patch = Object.fromEntries(RATE_FIELDS.map(([k]) => [k, n(f[k])]))
+    patch.payment_terms = Math.min(120, Math.max(0, Math.round(n(f.payment_terms))))
     patch.people = f.people.filter((p) => p.name.trim())
     patch.bank_details = f.bank_details
     patch.ai_estimator_enabled = Boolean(f.ai_estimator_enabled)

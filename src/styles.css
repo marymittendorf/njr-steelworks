@@ -324,3 +324,53 @@ label.btn input[type=file]{display:none}
 
 /* Parts supplied by the client */
 tr.client-part td{background:rgba(111,168,232,.07)}
+
+/* ---- Back end, Zoho-style layout (NJR dark) ---- */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.side{gap:1px;overflow-y:auto;max-height:100vh;position:sticky;top:0}
+.side .grp{font-family:var(--f-label);text-transform:uppercase;letter-spacing:.12em;font-size:.72rem;color:#6b727c;padding:12px 12px 4px;font-weight:600}
+.side button{text-transform:none;letter-spacing:.02em;font-size:.98rem;padding:7px 12px 7px 18px;font-weight:600}
+.side button.top{padding-left:12px}
+.side button[aria-current="page"]{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.side button[aria-current="page"] .count{background:var(--accent-ink);color:var(--accent-hi)}
+.main h1{font-size:1.9rem;margin:0}
+.pagehead{align-items:center;margin-bottom:16px}
+.lh{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.lh h1{font-size:1.9rem;text-transform:uppercase;margin:0}
+.lh-view select{width:auto;background:transparent;border:0;padding:2px 28px 2px 0;font-family:var(--f-display);font-size:1.9rem;text-transform:uppercase;color:var(--fg);cursor:pointer}
+.lh-view select option{font-family:var(--f-body);font-size:1rem;text-transform:none;background:var(--panel)}
+.lh-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.lh-tools input[type="search"]{width:220px;padding:8px 10px}
+.lh-tools .btn{padding:8px 14px}
+.sumstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.sumstrip > div,.sumstrip > button{padding:12px 16px;border:0;border-right:1px solid var(--line);background:transparent;text-align:left;color:var(--fg);font:inherit}
+.sumstrip > :last-child{border-right:0}
+.sumstrip > button{cursor:pointer}
+.sumstrip > button:hover{background:var(--panel-2)}
+.sumstrip span{display:block;color:var(--muted);font-size:.85rem}
+.sumstrip b{display:block;font-size:1.25rem;font-weight:600;margin-top:2px}
+.stx{font-family:var(--f-label);font-weight:700;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.tx-good{color:var(--good)} .tx-warn{color:var(--warn)} .tx-bad{color:var(--bad)} .tx-info{color:var(--info)} .tx-muted{color:var(--muted)} .tx-accent{color:var(--accent-hi)}
+.pill{border:0;padding:0;border-radius:0;font-weight:700}
+td .lnk,.lnk{color:var(--info)}
+.kpis{gap:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.kpi{border:0;border-right:1px solid var(--line);border-radius:0;padding:12px 16px}
+.kpi:last-child{border-right:0}
+.kpi b{font-family:var(--f-body);font-size:1.25rem;font-weight:600}
+.rec-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.rec-bar h1{display:flex;align-items:center;gap:10px}
+.rec-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rec-acts .btn{padding:8px 14px}
+.rec-meta{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:14px;color:var(--muted);font-size:.95rem}
+.paper{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:22px 24px;margin-bottom:16px}
+.paper .ph-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.paper table th{background:transparent}
+.paper .tots{margin-left:auto;width:min(280px,100%);margin-top:10px}
+.paper .tots div{display:flex;justify-content:space-between;padding:3px 0}
+.paper .tots .grand{border-top:1px solid var(--line);margin-top:4px;padding-top:6px;font-weight:700;font-size:1.1rem}
+.menu-more{position:relative}
+.menu-more > div{position:absolute;right:0;top:calc(100% + 4px);z-index:30;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;min-width:200px;display:flex;flex-direction:column;padding:4px}
+.menu-more > div button{background:none;border:0;text-align:left;padding:8px 12px;color:var(--fg);cursor:pointer;border-radius:4px;font:inherit}
+.menu-more > div button:hover{background:var(--panel)}
+@media (max-width: 760px){.lh-tools input[type="search"]{width:100%}.lh-tools{width:100%}}
+@media (max-width:960px){.side{position:static;max-height:none}.side .grp{display:none}.side button{padding-left:12px}.sumstrip > div,.sumstrip > button{border-bottom:1px solid var(--line)}}
