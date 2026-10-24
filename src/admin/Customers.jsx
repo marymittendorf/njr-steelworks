@@ -30,22 +30,22 @@ function groupCustomers(jobs) {
 
 const VIEWS = ['All customers', 'Owing money']
 
-export default function Customers({ settings, go, target }) {
+export default function Customers({ settings, go, target, toast }) {
   const [jobs, setJobs] = useState(null)
   const [error, setError] = useState(null)
   const [view, setView] = useState('All customers')
   const [q, setQ] = useState('')
   const [openKey, setOpenKey] = useState(target?.name ? keyOf(target.name) : null)
 
-  useEffect(() => {
-    supabase.from('jobs').select('*').order('quote_date', { ascending: false })
-      .then(({ data, error }) => { setJobs(data || []); setError(error) })
-  }, [])
+  const load = () => supabase.from('jobs').select('*').order('quote_date', { ascending: false })
+    .then(({ data, error }) => { setJobs(data || []); setError(error) })
+  useEffect(() => { load() }, [])
 
   if (!jobs) return error ? <ErrorNote error={error} /> : <Loading />
   const customers = groupCustomers(jobs)
   const open = openKey && customers.find((c) => c.key === openKey)
-  if (open) return <CustomerView c={open} settings={settings} go={go} onBack={() => setOpenKey(null)} />
+  if (open) return <CustomerView c={open} settings={settings} go={go} toast={toast} onBack={() => setOpenKey(null)}
+    onSaved={async (name) => { await load(); setOpenKey(keyOf(name)) }} />
 
   const needle = q.trim().toLowerCase()
   const shown = customers.filter((c) => view === 'All customers' || c.owing > 0.5)
@@ -80,9 +80,25 @@ export default function Customers({ settings, go, target }) {
   )
 }
 
-function CustomerView({ c, settings, go, onBack }) {
+function CustomerView({ c, settings, go, toast, onBack, onSaved }) {
   const [payments, setPayments] = useState(null)
   const [statement, setStatement] = useState(false)
+  const [edit, setEdit] = useState(null)
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  // A customer is the name on their quotes and invoices, so editing updates every one of them.
+  async function save() {
+    const name = edit.customer.trim()
+    if (!name) { setError('The customer needs a name.'); return }
+    setBusy(true); setError(null)
+    const { error } = await supabase.from('jobs')
+      .update({ customer: name, phone: edit.phone.trim() || null, email: edit.email.trim() || null, updated_at: new Date().toISOString() })
+      .in('id', c.jobs.map((j) => j.id))
+    setBusy(false)
+    if (error) { setError(error); return }
+    setEdit(null); toast(`Saved ${name} on ${c.jobs.length} quote${c.jobs.length === 1 ? '' : 's'} and invoice${c.jobs.length === 1 ? '' : 's'}`); onSaved(name)
+  }
   useEffect(() => {
     const ids = c.jobs.map((j) => j.id)
     supabase.from('payments').select('*').in('job_id', ids).order('paid_on', { ascending: false }).then(({ data }) => setPayments(data || []))
@@ -96,6 +112,7 @@ function CustomerView({ c, settings, go, onBack }) {
         <h1><button className="btn small" type="button" aria-label="Back to customers" onClick={onBack}>←</button>{c.customer}</h1>
         <div className="rec-acts">
           {c.phone && <a className="btn" href={`https://wa.me/${waNumber(c.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
+          <button className="btn" type="button" onClick={() => setEdit({ customer: c.customer, phone: c.phone || '', email: c.email || '' })}>Edit</button>
           <button className="btn" type="button" onClick={() => setStatement(true)}>Statement</button>
           <button className="btn primary" type="button" onClick={newQuote}>+ New quote</button>
         </div>
@@ -104,6 +121,20 @@ function CustomerView({ c, settings, go, onBack }) {
         {c.phone && <a className="num" href={`tel:${c.phone.replace(/\s/g, '')}`}>{c.phone}</a>}
         {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
       </div>
+      {edit && (
+        <div className="card block">
+          <div className="fgrid">
+            <div className="field"><label htmlFor="cu-name">Name</label><input id="cu-name" value={edit.customer} onChange={(e) => setEdit({ ...edit, customer: e.target.value })} autoFocus /></div>
+            <div className="field"><label htmlFor="cu-cell">Cell</label><input id="cu-cell" inputMode="tel" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></div>
+            <div className="field full"><label htmlFor="cu-email">Email</label><input id="cu-email" type="email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} placeholder="For emailing quotes and invoices" /></div>
+          </div>
+          <ErrorNote error={error} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save customer'}</button>
+            <button className="btn ghost" type="button" onClick={() => { setEdit(null); setError(null) }}>Cancel</button>
+            <span className="hint">Updates all {c.jobs.length} of their quotes and invoices.</span>
+          </div>
+        </div>)}
       <SumStrip items={[['Invoiced', money0(c.invoiced)], ['Paid', money0(c.paid)], ['Owing', money0(c.owing), null, c.owing > 0.5 ? 'warn' : null]]} />
 
       <div className="block-head"><h3>Quotes and invoices</h3></div>
