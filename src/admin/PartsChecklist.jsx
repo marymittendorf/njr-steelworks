@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../supabase.js'
 import { syncInvoiceTotals } from '../orders.js'
+import { customPart, n } from '../costing.js'
 import { ErrorNote } from './ui.jsx'
 
 // Every part a job needs: its own parts plus the parts inside its products (e.g. a 2 m³ skip).
 export function jobParts(job) {
-  const own = (job.mats || []).map((m, i) => ({ key: `m${i}`, src: 'mats', i, name: m.name, qty: m.qty, supplied_by: m.supplied_by || 'NJR', have: Boolean(m.have), from: null }))
+  const own = (job.mats || []).map((m, i) => ({ key: `m${i}`, src: 'mats', i, name: m.name, custom: m.custom, qty: m.qty, supplied_by: m.supplied_by || 'NJR', have: Boolean(m.have), from: null }))
   const inProducts = (job.products || []).flatMap((pl, pi) => (pl.parts || []).map((pt, j) => ({
     key: `p${pi}-${j}`, src: 'products', pi, j, name: pt.name, qty: Number(pt.qty) * Number(pl.qty || 1),
     supplied_by: pt.supplied_by || 'NJR', have: Boolean(pt.have), from: `${pl.qty} × ${pl.name}`,
@@ -20,7 +21,7 @@ export default function PartsChecklist({ job, toast, onClose, onSaved }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const rows = jobParts({ mats, products })
-  const changedSupplier = mats.some((m, i) => m.supplied_by !== ((job.mats[i] || {}).supplied_by || 'NJR'))
+  const changedSupplier = mats.some((m, i) => n(m.cost) > 0 && m.supplied_by !== ((job.mats[i] || {}).supplied_by || 'NJR'))
 
   function set(row, patch) {
     if (row.src === 'mats') setMats(mats.map((m, k) => (k === row.i ? { ...m, ...patch } : m)))
@@ -50,18 +51,17 @@ export default function PartsChecklist({ job, toast, onClose, onSaved }) {
             return [header,
               <tr key={r.key} className={r.supplied_by === 'Client' ? 'client-part' : ''}>
                 <td><input type="checkbox" checked={r.have} onChange={(e) => set(r, { have: e.target.checked })} aria-label={`Have ${r.name}`} style={{ width: 22, height: 22 }} /></td>
-                <td>{r.name || <span className="hint">(no name)</span>}</td>
+                <td>{r.custom ? <input aria-label="Part name" value={r.name} onChange={(e) => set(r, { name: e.target.value })} placeholder="e.g. towing hitch ball" /> : r.name || <span className="hint">(no name)</span>}</td>
                 <td className="r num">{r.qty}</td>
-                <td>{r.src === 'mats'
-                  ? <select aria-label="Supplied by" value={r.supplied_by} onChange={(e) => set(r, { supplied_by: e.target.value })} style={{ width: 'auto' }}><option value="NJR">NJR</option><option value="Client">Client</option></select>
-                  : <span className="hint">NJR</span>}</td>
+                <td><select aria-label="Supplied by" value={r.supplied_by} onChange={(e) => set(r, { supplied_by: e.target.value })} style={{ width: 'auto' }}><option value="NJR">NJR</option><option value="Client">Client</option></select></td>
               </tr>]
           })}</tbody>
         </table></div>
         {changedSupplier && job.invoice_no && <p className="hint" style={{ color: 'var(--warn)' }}>Changing who supplies a part changes the invoice total.</p>}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
-          <span className="hint" style={{ alignSelf: 'center' }}>To add or price parts, open the job's costing.</span>
+          <button className="btn" type="button" onClick={() => setMats([...mats, customPart('', 'Client')])}>Client brings a part</button>
+          <span className="hint" style={{ alignSelf: 'center' }}>Parts marked Client are not taken off stock and are listed on the quote.</span>
         </div>
       </div>
     </div>

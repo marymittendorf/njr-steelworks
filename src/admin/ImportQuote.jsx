@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase.js'
-import { n } from '../costing.js'
+import { n, ownLine } from '../costing.js'
 import { readDocument } from '../docReader.js'
 import { parseQuote } from '../docParse.js'
 import { stampsFor, syncInvoiceTotals } from '../orders.js'
@@ -64,8 +64,9 @@ export default function ImportQuote({ settings, onClose, onCreated }) {
         quote_date: f.date, units: 1, galv: false, markup: 0,
         status: f.status, job_type: 'Customer job',
         notes: `Imported from PDF quote${f.number ? ` ${f.number}` : ''}.`,
-        mats: [], labour: [], extras: items.map((i) => ({ desc: i.desc.trim(), amount: Math.round(n(i.amount) * 100) / 100 })),
-        // Imported prices are final: no overhead or markup added on top.
+        mats: [], labour: [], extras: [],
+        products: items.map((i) => ownLine(i.desc.trim(), Math.round(n(i.amount) * (1 + vatRate / 100) * 100) / 100)),
+        // Imported prices are final: lines at the PDF's prices.
         rates: { labour: 0, consumables: 0, overhead: 0, vat: vatRate, galv: 0, validity: n(settings.validity), deposit: n(settings.deposit) },
         source_pdf_path: path,
         ...stampsFor({}, f.status),

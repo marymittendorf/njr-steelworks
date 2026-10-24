@@ -117,7 +117,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
                       <button className="btn small" type="button" disabled={busy === j.id} onClick={() => advance(j, step[0], step[1])}>{step[1]}</button>
                     </div>}
                     <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => setPhotosFor(j)}>Photos &amp; hand-in</button></div>
-                    {jobParts(j).length > 0 && <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Parts {jobParts(j).filter((x) => x.have).length}/{jobParts(j).length}</button></div>}
+                    <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Parts {jobParts(j).filter((x) => x.have).length}/{jobParts(j).length}</button></div>
                     {!stock && ['Ready', 'In production'].includes(j.status) && (
                       <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => go('deliveries', { jobId: j.id })}>Book delivery</button></div>
                     )}

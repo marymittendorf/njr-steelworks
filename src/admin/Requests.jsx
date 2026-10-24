@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { fromTemplate, productLine, ratesFrom, TEMPLATE_FOR_REQUEST } from '../costing.js'
+import { ownLine, productLine, ratesFrom, templateLine, workedLine, TEMPLATE_FOR_REQUEST } from '../costing.js'
 import { money0, shortDate, waNumber } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 
@@ -43,14 +43,18 @@ export default function Requests({ settings, prices, go, refreshCount }) {
       return
     }
     const ai = r.ai_estimate && !r.ai_estimate.failed ? r.ai_estimate : null
+    const rates = ratesFrom(settings)
+    const active = prices.filter((p) => p.active)
+    // One line to start from: the AI's parts list, a template's suggested price, or an empty line for custom work.
+    const line = ai
+      ? { ...workedLine({ mats: ai.mats.map((m) => ({ id: m.id, qty: m.qty })), labour: ai.labour, extras: ai.extras, markup: settings.markup }, active, rates, ownLine(ai.title)), qty: ai.units || 1 }
+      : tpl === 'custom' ? ownLine(r.type) : templateLine(tpl, active, rates, settings.markup)
     go('cost', {
       draft: {
-        ...fromTemplate(tpl, prices.filter((p) => p.active)),
+        title: '', mats: [], labour: [], extras: [], products: [line],
         customer: r.name, phone: r.phone, email: r.email || '', notes: r.detail || '',
-        units: 1, galv: false, markup: settings.markup, status: 'Draft', request_id: r.id,
-        rates: ratesFrom(settings), category: /skip/i.test(r.type) ? 'Skips' : /trailer/i.test(r.type) ? 'Trailers' : null,
-        // Start from the AI's bill of materials when there is one (prices locked at today's list).
-        ...(ai ? { title: ai.title, units: ai.units, galv: ai.galv, mats: ai.mats, labour: ai.labour, extras: ai.extras } : {}),
+        units: 1, galv: false, markup: settings.markup, status: 'Draft', request_id: r.id, rates,
+        category: /skip/i.test(r.type) ? 'Skips' : /trailer/i.test(r.type) ? 'Trailers' : null,
       },
     })
   }

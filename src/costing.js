@@ -69,7 +69,10 @@ export function customPart(name = '', supplied_by = 'NJR') {
 }
 
 // Parts the customer supplies, for the quote/invoice note.
-export const clientParts = (job) => (job.mats || []).filter((m) => m.supplied_by === 'Client')
+export const clientParts = (job) => [
+  ...(job.products || []).flatMap((pl) => (pl.parts || []).filter((x) => x.supplied_by === 'Client').map((x) => ({ ...x, qty: n(x.qty) * n(pl.qty || 1) }))),
+  ...(job.mats || []).filter((m) => m.supplied_by === 'Client'),
+]
 
 export function fromTemplate(key, prices) {
   const t = TEMPLATES[key] || TEMPLATES.custom
@@ -190,5 +193,44 @@ export function productLine(product, prices, rates, chosen = [], qty = 1) {
     cost_excl: Math.round((pc.cost + opts.reduce((a, o) => a + n(o.cost_excl), 0)) * 100) / 100,
     parts: pc.parts.map((x) => ({ id: x.id, name: x.name, unit: x.unit, qty: x.qty, cost: x.cost, supplied_by: 'NJR', have: false })),
     labour: product.labour || [],
+  }
+}
+
+// A line NJR types in for one-off work: description, price each incl. VAT, and (optional) what it costs NJR.
+export function ownLine(name = '', price_incl = '', qty = 1, cost_excl = '') {
+  return { product_id: null, custom: true, name, qty, options: [], price_incl, cost_excl, parts: [], labour: [] }
+}
+
+// "Work out a price": parts from Stock + hours + other costs → cost and suggested price, as an own line.
+// The recipe is kept on the line (worked) so the helper reopens with the same parts and hours.
+export function workedLine(recipe, prices, rates, base = ownLine()) {
+  const pc = productCost(recipe, prices, rates)
+  return {
+    ...base,
+    price_incl: suggestedPrice(pc.cost, recipe.markup, rates.vat),
+    cost_excl: Math.round(pc.cost * 100) / 100,
+    parts: pc.parts.map((x) => ({ id: x.id, name: x.name, unit: x.unit, qty: x.qty, cost: x.cost, supplied_by: 'NJR', have: false })),
+    labour: recipe.labour || [],
+    worked: { mats: recipe.mats || [], labour: recipe.labour || [], extras: recipe.extras || [], markup: n(recipe.markup) },
+  }
+}
+
+// A template (or old-style job costing) as a worked own line.
+export function templateLine(key, prices, rates, markup) {
+  const t = TEMPLATES[key] || TEMPLATES.custom
+  const ids = new Set(prices.map((p) => p.id))
+  const recipe = { mats: t.mats.filter(([id]) => ids.has(id)).map(([id, qty]) => ({ id, qty })), labour: t.labour.map(([task, hours]) => ({ task, hours })), extras: [], markup }
+  return workedLine(recipe, prices, rates, ownLine(t.title))
+}
+
+// Older quotes were costed part by part on the job itself (mats/labour/extras). Turn that into one own line
+// at exactly the same price, keeping the parts (client-supplied parts stay on the job's parts list).
+export function legacyToLine(job) {
+  const t = calc(job)
+  if (!t.costedExcl) return null
+  return {
+    ...ownLine(job.title || 'Work as quoted', Math.round((t.costedExcl * (1 + job.rates.vat / 100) / t.u) * 100) / 100, t.u, Math.round((t.costedCost / t.u) * 100) / 100),
+    parts: (job.mats || []).filter((m) => m.supplied_by !== 'Client').map((m) => ({ id: m.id, name: m.name, unit: m.unit, qty: n(m.qty), cost: n(m.cost), supplied_by: 'NJR', have: Boolean(m.have) })),
+    labour: job.labour || [],
   }
 }

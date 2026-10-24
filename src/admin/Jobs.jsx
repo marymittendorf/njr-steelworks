@@ -48,7 +48,7 @@ export default function Jobs({ go }) {
     <>
       <div className="pagehead">
         <div><h1>Quotes</h1><p>Drafts and quotes waiting for the customer. Accepted quotes (stage Received) move to Orders. Click a row to open it.</p></div>
-        <button className="btn primary" type="button" onClick={() => go('cost', null)}>New costing</button>
+        <button className="btn primary" type="button" onClick={() => go('cost', null)}>New quote</button>
       </div>
       <div className="filters" role="group" aria-label="Filter by status">
         {filters.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>{f}</button>)}

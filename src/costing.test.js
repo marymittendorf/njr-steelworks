@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt } from './costing.js'
+import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts } from './costing.js'
 
 const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 20, validity: 14, deposit: 50 }
 
@@ -83,4 +83,30 @@ test('a quote mixing a product with costed extras adds up', () => {
   const t = calc(job)
   assert.ok(Math.abs(t.excl - (1000 + 650)) < 1e-6)
   assert.ok(Math.abs(customerLines(job).reduce((a, l) => a + l.amount, 0) - t.excl) < 1e-6)
+})
+
+test('an older part-by-part quote becomes one own line at the same total', () => {
+  const job = {
+    units: 2, galv: false, markup: 20, rates, title: 'Gate',
+    mats: [{ id: 'a', name: 'A', qty: 2, cost: 500, kg: 0 }, { id: 'b', name: 'Hinge', qty: 1, cost: 0, supplied_by: 'Client' }],
+    labour: [{ task: 'Weld', hours: 4 }], extras: [],
+  }
+  const before = calc(job).total
+  const line = legacyToLine(job)
+  const after = calc({ ...job, mats: [], labour: [], extras: [], units: 1, products: [line] })
+  assert.ok(Math.abs(after.total - before) < 0.05)
+  assert.equal(line.qty, 2)
+  assert.equal(line.parts.length, 1) // client hinge stays off the line
+  assert.equal(legacyToLine({ ...job, mats: [], labour: [] }), null)
+})
+
+test('work out a price: suggested price from parts and hours; client parts listed per line', () => {
+  const prices = [{ id: 'a', name: 'A', unit: 'each', cost: 100 }]
+  const line = workedLine({ mats: [{ id: 'a', qty: 3 }], labour: [{ task: 'Weld', hours: 2 }], extras: [], markup: 20 }, prices, rates, ownLine('Repair'))
+  // direct 300 + 2h*(300+50) = 1000, +10% overhead = 1100; *1.2*1.15 = 1518 → 1520
+  assert.equal(line.cost_excl, 1100)
+  assert.equal(line.price_incl, 1520)
+  assert.equal(line.worked.mats[0].qty, 3)
+  const job = { products: [{ ...line, qty: 2, parts: [{ ...line.parts[0], supplied_by: 'Client' }] }], mats: [] }
+  assert.equal(clientParts(job)[0].qty, 6)
 })

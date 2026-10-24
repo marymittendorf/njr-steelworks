@@ -30,16 +30,23 @@ export default function Dashboard({ go }) {
   const owed = rows.filter((x) => x.j.invoice_no && !x.j.invoice_voided_at && Number(x.j.invoice_total) - Number(x.j.amount_paid) > 0.5)
   const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready', 'Delivered'].includes(x.j.status))
   const avgMargin = won.length ? won.reduce((a, x) => a + x.t.margin, 0) / won.length : 0
-  const agg = won.reduce((a, { t }) => ({
-    m: a.m + t.materials + t.galv + t.extras, l: a.l + t.labour + t.consumables, o: a.o + t.overhead, p: a.p + t.markup,
-  }), { m: 0, l: 0, o: 0, p: 0 })
+  const agg = won.reduce((a, { j, t }) => {
+    let m = 0, l = 0, o = 0
+    for (const pl of j.products || []) {
+      const q = Number(pl.qty) || 1
+      const parts = (pl.parts || []).filter((x) => x.supplied_by !== 'Client').reduce((s, x) => s + Number(x.qty) * Number(x.cost || 0), 0) * q
+      const time = (pl.labour || []).reduce((s, x) => s + Number(x.hours || 0), 0) * (Number(j.rates.labour) + Number(j.rates.consumables)) * q
+      m += parts; l += time; o += Math.max(0, Number(pl.cost_excl || 0) * q - parts - time)
+    }
+    return { m: a.m + m + t.materials + t.galv + t.extras, l: a.l + l + t.labour + t.consumables, o: a.o + o + t.overhead, p: a.p + t.markup }
+  }, { m: 0, l: 0, o: 0, p: 0 })
   const tot = agg.m + agg.l + agg.o + agg.p
 
   return (
     <>
       <div className="pagehead">
         <div><h1>Dashboard</h1><p>Workshop overview. Amounts include VAT.</p></div>
-        <button className="btn primary" type="button" onClick={() => go('cost', null)}>New costing</button>
+        <button className="btn primary" type="button" onClick={() => go('cost', null)}>New quote</button>
       </div>
       <div className="kpis">
         <button type="button" className="kpi" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => go('requests')}>
