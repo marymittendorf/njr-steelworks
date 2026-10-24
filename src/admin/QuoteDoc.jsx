@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, clientParts, customerLines } from '../costing.js'
+import { calc, clientParts, customerDoc, customerLines } from '../costing.js'
 import { addDays, money, shortDate } from '../format.js'
 import { BillTo } from './ui.jsx'
 
@@ -82,13 +82,14 @@ function EmailPanel({ job, isInvoice, total, docRef, onSent }) {
   const kind = isInvoice ? 'Invoice' : 'Quote'
   const number = isInvoice ? job.invoice_no : job.quote_no
   const first = (job.customer || '').split(' ')[0]
+  const link = job.share_token ? `${window.location.origin}/q/${job.share_token}` : ''
   const [to, setTo] = useState(job.email || '')
   const [subject, setSubject] = useState(`${isInvoice ? 'Invoice' : 'Quotation'} ${number} from NJR Steelworks`)
   const [message, setMessage] = useState(isInvoice
     ? `Hi ${first},
 
 Please find attached invoice ${number} for ${job.title} (${money(total)} incl. VAT).
-
+${link ? `\nView it online: ${link}\n` : ''}
 Thank you for your business.
 
 Kind regards
@@ -98,7 +99,7 @@ George, Western Cape`
 
 Thank you for your enquiry. Please find attached quotation ${number} for ${job.title} (${money(total)} incl. VAT).
 
-Reply to this email or WhatsApp us to accept, and we'll book your job.
+${link ? `Accept or decline it online here: ${link}\n\nOr reply` : 'Reply'} to this email or WhatsApp us to accept, and we'll book your job.
 
 Kind regards
 NJR Steelworks
@@ -113,6 +114,8 @@ George, Western Cape`)
   async function send() {
     setState({ busy: true, error: '' })
     try {
+      // The online copy (link) shows what was emailed.
+      await supabase.from('jobs').update({ customer_doc: customerDoc(job) }).eq('id', job.id)
       const { default: html2pdf } = await import('html2pdf.js')
       const dataUri = await html2pdf().set({
         margin: 8, image: { type: 'jpeg', quality: 0.92 },

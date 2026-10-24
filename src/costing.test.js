@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts } from './costing.js'
+import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc } from './costing.js'
 
 const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 20, validity: 14, deposit: 50 }
 
@@ -115,4 +115,12 @@ test('an empty part line (not chosen yet) is ignored, not reported as unpriced',
   const pc = productCost({ mats: [{ id: 'a', qty: 1 }, { id: '', qty: 1 }], labour: [], extras: [] }, [{ id: 'a', name: 'A', cost: 10 }], rates)
   assert.equal(pc.parts.length, 1)
   assert.equal(pc.unpriced.length, 0)
+})
+
+test('customer copy has selling prices and totals only, never costs', () => {
+  const job = { rates, mats: [], labour: [], extras: [], units: 1, markup: 0, products: [{ name: '2 m³ skip', qty: 2, options: [], price_incl: 1150, cost_excl: 600, parts: [{ id: 'a', name: 'A', qty: 1, cost: 600 }] }] }
+  const d = customerDoc(job)
+  assert.equal(d.total, 2300)
+  assert.equal(d.lines[0].amount, 2000)
+  assert.ok(!JSON.stringify(d).includes('600'))
 })

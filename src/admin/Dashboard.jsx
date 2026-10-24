@@ -35,8 +35,11 @@ export default function Dashboard({ go, settings, prices }) {
   const ready = jobs.filter((j) => j.status === 'Ready' && j.job_type !== 'Built for stock')
   const noPrice = prices.filter((p) => p.active && !Number(p.cost))
   const s = (k, one, many) => `${k} ${k === 1 ? one : many}`
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+  const answered = jobs.filter((j) => j.customer_response_at && j.customer_response_at > weekAgo).sort((a, b) => b.customer_response_at.localeCompare(a.customer_response_at))
 
   const todo = [
+    ...answered.map((j) => [`${j.customer_response_name || j.customer} ${j.customer_response.toLowerCase()} quote ${j.quote_no} online${j.customer_response === 'Accepted' ? ` (invoice ${j.invoice_no})` : ''}`, 'cost', { jobId: j.id }]),
     d.newReq && [s(d.newReq, 'new website request', 'new website requests'), 'requests'],
     overdue.length && [`${s(overdue.length, 'invoice is', 'invoices are')} overdue (${money0(overdue.reduce((a, j) => a + balanceOf(j), 0))})`, 'invoices'],
     short.length && [`${s(short.length, 'order is', 'orders are')} still waiting for parts`, 'orders'],
@@ -58,8 +61,8 @@ export default function Dashboard({ go, settings, prices }) {
       <div className="tbl-wrap"><table>
         <thead><tr><th>Needs attention</th><th /></tr></thead>
         <tbody>
-          {todo.map(([text, page]) => (
-            <tr key={text} {...rowProps(() => go(page))}><td>{text}</td><td className="r lnk">Open</td></tr>))}
+          {todo.map(([text, page, target]) => (
+            <tr key={text} {...rowProps(() => go(page, target))}><td>{text}</td><td className="r lnk">Open</td></tr>))}
           {!todo.length && <tr><td colSpan="2" className="hint">Nothing waiting. All up to date.</td></tr>}
         </tbody>
       </table></div>

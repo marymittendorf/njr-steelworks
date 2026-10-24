@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, legacyToLine, n, ownLine, productLine, ratesFrom, STATUSES } from '../costing.js'
+import { calc, customerDoc, legacyToLine, n, ownLine, productLine, ratesFrom, STATUSES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote, Picker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
@@ -96,6 +96,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     payload.extras = (payload.extras || []).map((x) => ({ ...x, amount: n(x.amount) }))
     payload.products = lines.map((x) => ({ ...x, name: x.name.trim(), qty: Math.max(1, n(x.qty)), price_incl: n(x.price_incl), cost_excl: n(x.cost_excl) }))
     Object.assign(payload, stampsFor(j, payload.status)) // date-stamp the order timeline
+    payload.customer_doc = customerDoc({ ...j, ...payload }) // what the customer sees on their link
     let res
     if (j.id) res = await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', j.id).select().single()
     else res = await supabase.from('jobs').insert(payload).select().single()
@@ -137,6 +138,11 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
         <button className="btn small" type="button" onClick={() => go('cost', null)}>New quote</button>
       </div>
 
+      {job.customer_response && (
+        <div className="card block" style={{ borderColor: job.customer_response === 'Accepted' ? 'var(--good)' : 'var(--bad)' }}>
+          <b className={job.customer_response === 'Accepted' ? 'tx-good' : 'tx-bad'}>{job.customer_response} online</b> by {job.customer_response_name} on {new Date(job.customer_response_at).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}
+          {job.customer_response_note && <div style={{ marginTop: 6 }}>"{job.customer_response_note}"</div>}
+        </div>)}
       <div className="cost-layout">
         <div>
           <div className="card block"><div className="fgrid">
@@ -237,6 +243,8 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           {noCost > 0 && <div className="row hint" style={{ color: 'var(--warn)' }}>{noCost} line{noCost > 1 ? 's have' : ' has'} no cost, so profit looks higher than it is.</div>}
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
+            <button className="btn" type="button" disabled={busy} onClick={async () => { if (await save()) go('jobs') }}>Save and close</button>
+            <button className="btn ghost" type="button" disabled={busy} onClick={() => go('jobs')} title="Close without saving changes">Cancel</button>
             {!job.invoice_no && (job.job_type || 'Customer job') === 'Customer job' && ['Draft', 'Quote sent'].includes(job.status) && (confirmConvert
               ? <button className="btn primary" type="button" disabled={busy} onClick={convertToInvoice}>Confirm: make invoice</button>
               : <button className="btn" type="button" disabled={busy} onClick={() => setConfirmConvert(true)} title="The customer accepted: issue the invoice and move the job to Orders">Convert to invoice</button>)}

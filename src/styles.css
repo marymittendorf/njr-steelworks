@@ -382,3 +382,4 @@ td .lnk,.lnk{color:var(--info)}
 .tbl-wrap.open-ok{overflow:visible}
 tr.picked td{background:rgba(244,122,31,.08)}
 .picker li.create{color:var(--accent-hi);font-weight:600;border-top:1px solid var(--line);margin-top:4px}
+@media print{.no-print,.site-head,.wa-float{display:none!important}}

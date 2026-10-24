@@ -234,3 +234,16 @@ export function legacyToLine(job) {
     labour: job.labour || [],
   }
 }
+
+// What the customer may see on their link (selling prices only, never costs): lines excl. VAT and totals.
+// Stored on the job (customer_doc) when it is saved or emailed.
+export function customerDoc(job) {
+  const t = calc(job)
+  const r2 = (v) => Math.round(v * 100) / 100
+  return {
+    lines: customerLines(job).map((l) => ({ desc: l.desc, qty: n(l.qty), amount: r2(l.amount) })),
+    excl: r2(t.excl), vat: r2(t.vat), total: r2(t.total), deposit: r2(t.deposit),
+    vat_rate: n(job.rates.vat), deposit_pct: n(job.rates.deposit), validity: n(job.rates.validity),
+    client_parts: clientParts(job).map((m) => `${n(m.qty)} × ${m.name}`),
+  }
+}
