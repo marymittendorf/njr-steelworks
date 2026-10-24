@@ -12,7 +12,6 @@ import Stock from './Stock.jsx'
 import Deliveries from './Deliveries.jsx'
 import Expenses from './Expenses.jsx'
 import PettyCash from './PettyCash.jsx'
-import Prices from './Prices.jsx'
 import Settings from './Settings.jsx'
 import Gallery from './Gallery.jsx'
 import Staff from './Staff.jsx'
@@ -44,14 +43,14 @@ const PAGES = [
   ['cost', 'Job costing'],
   ['expenses', 'Expenses'],
   ['petty', 'Petty cash'],
-  ['prices', 'Steel price list'],
   ['gallery', 'Website photos'],
   ['settings', 'Rates & settings'],
   ['staff', 'Staff'], // owners only
 ]
 
 const pageFromHash = () => {
-  const h = window.location.hash.replace('#', '')
+  const raw = window.location.hash.replace('#', '')
+  const h = raw === 'prices' ? 'stock' : raw // the price list now lives under Stock
   return PAGES.some(([k]) => k === h) ? h : 'dash'
 }
 
@@ -161,11 +160,10 @@ function StaffShell({ session }) {
             {page === 'banking' && <Banking {...props} />}
             {page === 'invoices' && <Invoices key={invoiceTarget?.nonce || 'inv'} target={invoiceTarget} {...props} />}
             {page === 'deliveries' && <Deliveries key={deliveryTarget?.nonce || 'cal'} target={deliveryTarget} {...props} />}
-            {page === 'stock' && <Stock {...props} />}
+            {page === 'stock' && <Stock {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}
             {page === 'cost' && <JobCosting key={costTarget?.nonce || 'new'} target={costTarget} {...props} />}
             {page === 'expenses' && <Expenses {...props} />}
             {page === 'petty' && <PettyCash {...props} me={staff} />}
-            {page === 'prices' && <Prices {...props} reload={loadPrices} syncFromPrices={syncFromPrices} />}
             {page === 'gallery' && <Gallery {...props} />}
             {page === 'staff' && <Staff {...props} me={staff} />}
             {page === 'settings' && <Settings {...props} syncFromPrices={syncFromPrices} />}

@@ -13,14 +13,14 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || `
 
 // Upload a supplier invoice → read supplier, date, number and each item → check →
 // items go into parts & materials stock at the purchase price, the purchase goes into Expenses.
-export default function PurchaseImport({ stockParts, prices, me, toast, onClose, onSaved }) {
+export default function PurchaseImport({ manual, prices, me, toast, onClose, onSaved }) {
   const [file, setFile] = useState(null)
   const [reading, setReading] = useState(null)
   const [error, setError] = useState(null)
-  const [f, setF] = useState(null)
+  const [f, setF] = useState(() => (manual ? { supplier: '', invoice_date: today(), invoice_no: '', method: 'EFT', docTotal: null, docVat: 0, inclVat: false, vatOn: true, items: [{ desc: '', qty: 1, unit: '', stock: '', updateCost: true }] } : null))
   const [busy, setBusy] = useState(false)
 
-  const findStock = (desc) => stockParts.find((s) => s.name.toLowerCase() === desc.toLowerCase())?.id || ''
+  const findStock = (desc) => prices.find((s) => s.name.toLowerCase() === desc.trim().toLowerCase())?.id || ''
 
   async function pick(e) {
     const chosen = e.target.files[0]
@@ -40,7 +40,7 @@ export default function PurchaseImport({ stockParts, prices, me, toast, onClose,
       supplier: slip.supplier || '', invoice_date: slip.date || today(), invoice_no: slip.invoice_no || '', method: 'EFT',
       docTotal: slip.total, docVat: slip.vat || 0, inclVat, vatOn: (slip.vat || 0) > 0,
       items: (items.length ? items : [{ desc: '', qty: 1, unit: '', total: 0 }]).map((i) => ({
-        desc: i.desc, qty: i.qty, unit: i.unit, stock: findStock(i.desc), unitName: 'each', toPriceList: false,
+        desc: i.desc, qty: i.qty, unit: i.unit, stock: findStock(i.desc), updateCost: true,
       })),
     })
     setReading(null)
@@ -73,34 +73,28 @@ export default function PurchaseImport({ stockParts, prices, me, toast, onClose,
       }).select('id').single()
       if (e2) throw e2
 
+      const taken = new Set(prices.map((x) => x.id))
       for (const it of items) {
         const unitCost = r2(exclUnit(it))
-        let part = stockParts.find((s) => s.id === it.stock)
-        if (!part) {
-          const existing = stockParts.find((s) => s.name.toLowerCase() === it.desc.trim().toLowerCase())
-          if (existing) part = existing
-          else {
-            const { data, error } = await supabase.from('stock_parts').insert({ name: it.desc.trim(), unit: it.unitName || 'each', qty_on_hand: 0 }).select().single()
-            if (error) throw error
-            part = data; stockParts.push(data)
-          }
+        const qty = n(it.qty)
+        let item = prices.find((x) => x.id === it.stock) || prices.find((x) => x.name.toLowerCase() === it.desc.trim().toLowerCase())
+        if (item) {
+          const patch = { qty_on_hand: r2(n(item.qty_on_hand) + qty) }
+          if (it.updateCost) patch.cost = unitCost
+          const { error } = await supabase.from('prices').update(patch).eq('id', item.id)
+          if (error) throw error
+          item.qty_on_hand = patch.qty_on_hand
+        } else {
+          let id = slug(it.desc.trim())
+          while (taken.has(id)) id = `${id.slice(0, 17)}${Math.floor(Math.random() * 900 + 100)}`
+          taken.add(id)
+          const sort = Math.max(0, ...prices.map((x) => x.sort || 0)) + 10
+          const { data, error } = await supabase.from('prices').insert({ id, name: it.desc.trim(), unit: 'each', cost: unitCost, kg: 0, qty_on_hand: qty, sort,
+            notes: `From ${f.supplier.trim()}${f.invoice_no ? ` invoice ${f.invoice_no.trim()}` : ''}` }).select().single()
+          if (error) throw error
+          item = data; prices.push(data)
         }
-        // Add to the price list (or update it) when ticked.
-        let price_id = part.price_id
-        if (it.toPriceList) {
-          if (price_id) await supabase.from('prices').update({ cost: unitCost }).eq('id', price_id)
-          else {
-            let id = slug(part.name)
-            if (prices.some((p) => p.id === id)) id = `${id}${Math.floor(Math.random() * 900 + 100)}`
-            const { error } = await supabase.from('prices').insert({ id, name: part.name, unit: part.unit, cost: unitCost, kg: 0, sort: 500, notes: `From ${f.supplier.trim()} invoice ${f.invoice_no || ''}`.trim() })
-            if (error) throw error
-            price_id = id
-          }
-        }
-        const { error: e3 } = await supabase.from('stock_parts').update({ qty_on_hand: n(part.qty_on_hand) + n(it.qty), last_cost: unitCost, price_id }).eq('id', part.id)
-        if (e3) throw e3
-        part.qty_on_hand = n(part.qty_on_hand) + n(it.qty)
-        const { error: e4 } = await supabase.from('purchase_lines').insert({ purchase_id: pur.id, stock_part_id: part.id, description: it.desc.trim(), qty: n(it.qty), unit_cost: unitCost, line_total: r2(n(it.qty) * unitCost) })
+        const { error: e4 } = await supabase.from('purchase_lines').insert({ purchase_id: pur.id, price_id: item.id, description: it.desc.trim(), qty, unit_cost: unitCost, line_total: r2(qty * unitCost) })
         if (e4) throw e4
       }
       toast(`${items.length} item${items.length === 1 ? '' : 's'} added to stock; ${money(total)} recorded in Expenses`)
@@ -111,10 +105,12 @@ export default function PurchaseImport({ stockParts, prices, me, toast, onClose,
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="card" style={{ maxWidth: 980, margin: '0 auto' }}>
-        <div className="block-head"><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>Upload a purchase invoice</h3><button className="x" type="button" aria-label="Close" onClick={onClose}>×</button></div>
-        <p className="hint" style={{ marginTop: 0 }}>A PDF invoice or a photo of the slip. We read the supplier and each item; you check them; they go into stock and Expenses.</p>
-        <div className="field slip-drop"><label htmlFor="pi-file">Supplier invoice (PDF or photo)</label>
-          <input id="pi-file" type="file" accept="application/pdf,image/*" capture="environment" onChange={pick} disabled={!!reading || busy} /></div>
+        <div className="block-head"><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>{manual ? 'Type in a purchase' : 'Upload a purchase invoice'}</h3><button className="x" type="button" aria-label="Close" onClick={onClose}>×</button></div>
+        <p className="hint" style={{ marginTop: 0 }}>{manual ? "What you bought, how many and what you paid. It's added to what you have on hand and recorded in Expenses." : "A PDF invoice or a photo of the slip. We read the supplier and each item; you check them; they're added to what you have on hand and recorded in Expenses."}</p>
+        {manual
+          ? <div className="field"><label htmlFor="pi-att">Receipt or slip (optional)</label><input id="pi-att" type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files[0] || null)} /></div>
+          : <div className="field slip-drop"><label htmlFor="pi-file">Supplier invoice (PDF or photo)</label>
+          <input id="pi-file" type="file" accept="application/pdf,image/*" capture="environment" onChange={pick} disabled={!!reading || busy} /></div>}
         {reading && <p className="loading">{reading}</p>}
         <ErrorNote error={error} />
 
@@ -130,22 +126,22 @@ export default function PurchaseImport({ stockParts, prices, me, toast, onClose,
             {f.vatOn && <label className="check"><input type="checkbox" checked={f.inclVat} onChange={(e) => setF({ ...f, inclVat: e.target.checked })} /> Item prices on the invoice include VAT</label>}
           </div>
           <div className="tbl-wrap"><table>
-            <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each{f.inclVat ? ' (incl. VAT)' : ''}</th><th className="r">Line excl. VAT</th><th>Goes into stock as</th><th>Price list</th><th /></tr></thead>
+            <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each{f.inclVat ? ' (incl. VAT)' : ''}</th><th className="r">Line excl. VAT</th><th>Add to</th><th>Cost</th><th /></tr></thead>
             <tbody>{f.items.map((it, i) => (
               <tr key={i}>
                 <td><input aria-label="Item" value={it.desc} onChange={(e) => set(i, { desc: e.target.value, stock: it.stock || findStock(e.target.value) })} /></td>
                 <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={it.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
                 <td className="r"><input className="money num" aria-label="Price each" type="number" min="0" step="0.01" value={it.unit} onChange={(e) => set(i, { unit: e.target.value })} /></td>
                 <td className="r num">{money(lineExcl(it))}</td>
-                <td><select aria-label="Stock item" value={it.stock} onChange={(e) => set(i, { stock: e.target.value })}>
-                  <option value="">New stock item: {it.desc ? it.desc.slice(0, 30) : '…'}</option>
-                  {stockParts.map((s) => <option key={s.id} value={s.id}>{s.name} ({n(s.qty_on_hand)} on hand)</option>)}
+                <td><select aria-label="Add to which item" value={it.stock} onChange={(e) => set(i, { stock: e.target.value })}>
+                  <option value="">New item: {it.desc ? it.desc.slice(0, 30) : '…'}</option>
+                  {prices.map((x) => <option key={x.id} value={x.id}>{x.name} ({n(x.qty_on_hand)} on hand)</option>)}
                 </select></td>
-                <td><label className="check" title="Add this item to the steel price list, or update its cost there"><input type="checkbox" checked={it.toPriceList} onChange={(e) => set(i, { toPriceList: e.target.checked })} /> Update</label></td>
+                <td>{it.stock ? <label className="check" title="Set this item's cost to what you paid now"><input type="checkbox" checked={it.updateCost} onChange={(e) => set(i, { updateCost: e.target.checked })} /> Update</label> : <span className="hint">new</span>}</td>
                 <td><button className="x" type="button" aria-label="Remove line" onClick={() => setF({ ...f, items: f.items.filter((_, k) => k !== i) })}>×</button></td>
               </tr>))}</tbody>
           </table></div>
-          <button className="btn small" type="button" style={{ marginTop: 8 }} onClick={() => setF({ ...f, items: [...f.items, { desc: '', qty: 1, unit: '', stock: '', unitName: 'each', toPriceList: false }] })}>Add line</button>
+          <button className="btn small" type="button" style={{ marginTop: 8 }} onClick={() => setF({ ...f, items: [...f.items, { desc: '', qty: 1, unit: '', stock: '', updateCost: true }] })}>Add line</button>
           <div className="sheet" style={{ position: 'static', marginTop: 12 }}>
             <dl style={{ paddingTop: 12 }}>
               <dt>Excl. VAT</dt><dd>{money(excl)}</dd><dt>VAT</dt><dd>{money(vat)}</dd><dt><b>Total</b></dt><dd><b>{money(total)}</b></dd>
