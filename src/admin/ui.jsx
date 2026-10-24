@@ -60,7 +60,7 @@ export function PartPicker({ prices, ...rest }) {
 }
 
 // The same search box for any list of {id, name, active}: products on a quote, parts, etc.
-export function Picker({ items, value, onChange, autoFocus, label = 'Part', search, sub, placeholder, empty }) {
+export function Picker({ items, value, onChange, autoFocus, label = 'Part', search, sub, placeholder, empty, onCreate, createLabel = 'New' }) {
   const prices = items
   const current = prices.find((p) => p.id === value)
   const [text, setText] = useState(null) // null = not typing: show the chosen part's name
@@ -77,7 +77,7 @@ export function Picker({ items, value, onChange, autoFocus, label = 'Part', sear
     if (text === null) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(h + 1, matches.length - 1)); listRef.current?.children[hi + 1]?.scrollIntoView({ block: 'nearest' }) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); listRef.current?.children[hi - 1]?.scrollIntoView({ block: 'nearest' }) }
-    else if (e.key === 'Enter') { e.preventDefault(); if (matches[hi]) pick(matches[hi]) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (matches[hi]) pick(matches[hi]); else if (onCreate) { onCreate(text.trim()); setText(null) } }
     else if (e.key === 'Escape') setText(null)
   }
 
@@ -96,7 +96,8 @@ export function Picker({ items, value, onChange, autoFocus, label = 'Part', sear
               onMouseDown={(e) => { e.preventDefault(); pick(p) }} onMouseEnter={() => setHi(i)}>
               <span>{p.name}</span><span className="num hint">{sub(p)}</span>
             </li>))}
-          {!matches.length && <li className="hint">{empty(text)}</li>}
+          {!matches.length && !onCreate && <li className="hint">{empty(text)}</li>}
+          {onCreate && <li className="create" onMouseDown={(e) => { e.preventDefault(); onCreate(text.trim()); setText(null) }}>+ {createLabel}{text.trim() ? ` "${text.trim()}"` : ''}</li>}
         </ul>
       )}
     </div>

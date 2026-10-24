@@ -7,7 +7,7 @@ import PartsPickList from './PartsPickList.jsx'
 
 const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
 const CARD_FOR = { Skips: 'skip', Trailers: 'trailer', Gates: 'gates', Fabrication: 'fabrication', Welding: 'welding' }
-const blank = (markup) => ({ name: '', category: 'Skips', spec: '', mats: [], labour: [{ task: 'Fabrication & welding', hours: 1 }], extras: [], markup, price_incl: '', options: [], on_website: false, active: true })
+export const blankProduct = (markup) => ({ name: '', category: 'Skips', spec: '', mats: [], labour: [{ task: 'Fabrication & welding', hours: 1 }], extras: [], markup, price_incl: '', options: [], on_website: false, active: true })
 
 // The website's "from" price per service card = the cheapest product in that category shown on the website.
 export async function syncWebsiteFromProducts(settings) {
@@ -38,7 +38,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
     <>
       <div className="pagehead">
         <h1>Products</h1>
-        <button className="btn primary" type="button" onClick={() => setEdit(blank(n(settings.markup)))}>New product</button>
+        <button className="btn primary" type="button" onClick={() => setEdit(blankProduct(n(settings.markup)))}>New product</button>
       </div>
       <ErrorNote error={error} />
       {!list.length ? <div className="card hint">No products yet. Click "New product", e.g. "2 m³ skip": add its parts from your parts list and the workshop hours, and the app suggests a price.</div> : (
@@ -69,7 +69,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
   )
 }
 
-function ProductEditor({ product, prices, settings, rates, me, toast, onClose, onSaved }) {
+export function ProductEditor({ product, prices, settings, rates, me, toast, onClose, onSaved }) {
   const [p, setP] = useState(() => ({ ...product, mats: [...(product.mats || [])], labour: [...(product.labour || [])], extras: [...(product.extras || [])], options: [...(product.options || [])] }))
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -95,10 +95,10 @@ function ProductEditor({ product, prices, settings, rates, me, toast, onClose, o
       options: p.options.filter((o) => o.name?.trim()).map((o) => ({ name: o.name.trim(), price_incl: n(o.price_incl), cost_excl: n(o.cost_excl) })),
       on_website: Boolean(p.on_website), active: Boolean(p.active), updated_at: new Date().toISOString(),
     }
-    const res = p.id ? await supabase.from('products').update(row).eq('id', p.id) : await supabase.from('products').insert(row)
+    const res = p.id ? await supabase.from('products').update(row).eq('id', p.id).select().single() : await supabase.from('products').insert(row).select().single()
     setBusy(false)
     if (res.error) { setError(res.error); return }
-    toast(`Saved ${row.name}`); onSaved()
+    toast(`Saved ${row.name}`); onSaved(res.data)
   }
 
   async function remove() {

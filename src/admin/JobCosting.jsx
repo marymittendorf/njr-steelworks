@@ -6,6 +6,7 @@ import { Loading, ErrorNote, Picker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import WorkOutPrice from './WorkOutPrice.jsx'
+import { ProductEditor, blankProduct, syncWebsiteFromProducts } from './Products.jsx'
 import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../orders.js'
 
 export const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
@@ -28,6 +29,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const settingsRates = ratesFrom(settings)
   const [adding, setAdding] = useState(null) // { id, qty, chosen: [] }
   const [workOut, setWorkOut] = useState(null) // index of the own line being worked out
+  const [newProduct, setNewProduct] = useState(null) // product being set up from this quote
   const [customers, setCustomers] = useState([]) // past customers, newest first, for the Customer list
   useEffect(() => {
     supabase.from('jobs').select('customer,phone,email').order('created_at', { ascending: false }).limit(1000).then(({ data }) => {
@@ -36,7 +38,8 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
       setCustomers([...seen.values()])
     })
   }, [])
-  useEffect(() => { supabase.from('products').select('*').eq('active', true).order('category').order('name').then(({ data }) => setCatalogue(data || [])) }, [])
+  const loadCatalogue = () => supabase.from('products').select('*').eq('active', true).order('category').order('name').then(({ data }) => setCatalogue(data || []))
+  useEffect(() => { loadCatalogue() }, [])
   const [job, setJob] = useState(() => target?.jobId ? null : (target?.draft || blankJob(settings)))
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -148,7 +151,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           <div className="block">
             <div className="block-head"><h3>On the quote</h3>
               {!adding && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className="btn small primary" type="button" disabled={!catalogue.length} onClick={() => setAdding({ id: '', qty: 1, chosen: [] })}>Add product</button>
+                <button className="btn small primary" type="button" onClick={() => setAdding({ id: '', qty: 1, chosen: [] })}>Add product</button>
                 <button className="btn small" type="button" onClick={() => addLine(ownLine())}>Add your own line</button>
               </div>}</div>
             {adding && (() => {
@@ -159,7 +162,8 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                     onChange={(id) => setAdding({ id, qty: adding.qty, chosen: [] })}
                     search={(x) => `${x.name} ${x.category} ${x.spec || ''}`}
                     sub={(x) => `${x.price_incl ? money0(x.price_incl) : 'no price yet'} · ${x.category}`}
-                    placeholder="Type to find a product…" empty={(t) => `No product matches "${t}". Set it up under Products, or add your own line.`} /></div>
+                    placeholder="Type to find a product…" empty={(t) => `No product matches "${t}".`}
+                    onCreate={(name) => setNewProduct({ ...blankProduct(n(settings.markup)), name, category: job.category || 'Skips' })} createLabel="New product" /></div>
                   <input className="qty num" aria-label="How many" type="number" min="1" step="1" value={adding.qty} onChange={(e) => setAdding({ ...adding, qty: e.target.value })} />
                   {(prod?.options || []).map((o) => (
                     <label key={o.name} className="check"><input type="checkbox" checked={adding.chosen.includes(o.name)} onChange={(e) => setAdding({ ...adding, chosen: e.target.checked ? [...adding.chosen, o.name] : adding.chosen.filter((c) => c !== o.name) })} /> {o.name} (+{money0(o.price_incl)})</label>
@@ -229,6 +233,14 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
 
       {workOut !== null && lines[workOut] && <WorkOutPrice line={lines[workOut]} prices={prices} rates={settingsRates} markup={settings.markup}
         onClose={() => setWorkOut(null)} onUse={(line) => { updLine(workOut, line); setWorkOut(null) }} />}
+      {newProduct && <ProductEditor product={newProduct} prices={prices} settings={settings} rates={settingsRates} me={me} toast={toast}
+        onClose={() => setNewProduct(null)}
+        onSaved={async (saved) => {
+          setNewProduct(null)
+          await loadCatalogue()
+          if (saved?.active) setAdding({ id: saved.id, qty: adding?.qty || 1, chosen: [] })
+          syncWebsiteFromProducts(settings)
+        }} />}
       {showPhotos && <JobFile job={job} me={me} toast={toast} onClose={() => setShowPhotos(false)} />}
       {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={async (msg) => {
         toast(msg); setShowDoc(false)
