@@ -3,15 +3,15 @@ import assert from 'node:assert/strict'
 import { nextStep, stampsFor } from './orderRules.js'
 
 test('customer job steps: start, ready, delivered, then nothing', () => {
-  assert.deepEqual(nextStep({ status: 'Accepted', job_type: 'Customer job' }), ['In workshop', 'Start production'])
-  assert.deepEqual(nextStep({ status: 'In workshop', job_type: 'Customer job' }), ['Ready', 'Mark ready'])
+  assert.deepEqual(nextStep({ status: 'Received', job_type: 'Customer job' }), ['In production', 'Start production'])
+  assert.deepEqual(nextStep({ status: 'In production', job_type: 'Customer job' }), ['Ready', 'Mark ready'])
   assert.deepEqual(nextStep({ status: 'Ready', job_type: 'Customer job' }), ['Delivered', 'Mark delivered'])
   assert.equal(nextStep({ status: 'Delivered', job_type: 'Customer job' }), null)
   assert.equal(nextStep({ status: 'Quote sent', job_type: 'Customer job' }), null)
 })
 
 test('stock build ends at Ready (moves to stock), no delivery step', () => {
-  assert.deepEqual(nextStep({ status: 'In workshop', job_type: 'Built for stock' }), ['Ready', 'Finished: move to stock'])
+  assert.deepEqual(nextStep({ status: 'In production', job_type: 'Built for stock' }), ['Ready', 'Finished: move to stock'])
   assert.equal(nextStep({ status: 'Ready', job_type: 'Built for stock' }), null)
 })
 

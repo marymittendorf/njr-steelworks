@@ -1,5 +1,5 @@
 // Order tracker rules, modelled on the Forever Planks order book:
-// a job moves Accepted → In workshop → Ready → Delivered, each step date-stamped,
+// a job moves Received → In production → Ready → Delivered, each step date-stamped,
 // with payment tracked separately. Stock builds go into Stock when they're ready.
 import { supabase } from './supabase.js'
 import { calc } from './costing.js'

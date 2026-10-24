@@ -38,7 +38,7 @@ export default function Prices({ prices, reload, syncFromPrices, toast }) {
         <tbody>
           {prices.map((p) => (
             <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-              <td>{p.name} <span className="hint">· {p.id}</span></td>
+              <td>{p.name} <span className="hint">· {p.id}</span>{p.notes && <div className="hint" style={{ fontSize: '.8rem' }}>{p.notes}</div>}</td>
               <td className="hint">{p.unit}</td>
               <td className="r"><input className="qty num" aria-label={`Mass of ${p.name}`} type="number" min="0" step="0.1" defaultValue={p.kg}
                 onBlur={(e) => n(e.target.value) !== n(p.kg) && saveRow(p, { kg: n(e.target.value) })} /></td>

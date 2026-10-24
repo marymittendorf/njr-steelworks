@@ -4,6 +4,7 @@ import { calc, fromTemplate, matLine, n, ratesFrom, STATUSES, TEMPLATES } from '
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
+import JobFile from './JobFile.jsx'
 import { JOB_TYPES, PAYMENT_STATUSES, ensureStockItem, stampsFor } from '../orders.js'
 
 const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'payment_status', 'notes', 'request_id', 'mats', 'labour', 'extras', 'rates']
@@ -18,6 +19,7 @@ function blankJob(settings, prices) {
 
 export default function JobCosting({ target, settings, prices, toast, go, me }) {
   const [confirmDel, setConfirmDel] = useState(false)
+  const [showPhotos, setShowPhotos] = useState(false)
   const active = prices.filter((p) => p.active)
   const [job, setJob] = useState(() => target?.jobId ? null : (target?.draft || blankJob(settings, active)))
   const [error, setError] = useState(null)
@@ -72,7 +74,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     if (!job.id && job.request_id) await supabase.from('requests').update({ status: 'Quoted' }).eq('id', job.request_id)
     await ensureStockItem(res.data)
     setJob(res.data)
-    toast(!job.invoice_no && res.data.invoice_no ? `Accepted: invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
+    toast(!job.invoice_no && res.data.invoice_no ? `Received: invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
     return res.data
   }
 
@@ -122,7 +124,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
             <div className="field"><label htmlFor="c-units">Number of identical units</label><input id="c-units" type="number" min="1" step="1" value={job.units} onChange={(e) => upd({ units: e.target.value })} /></div>
             <div className="field"><label htmlFor="c-status">Stage</label>
               <select id="c-status" value={job.status} onChange={(e) => upd({ status: e.target.value })}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
-              <span className="hint">Accepted or later shows the job under Orders</span></div>
+              <span className="hint">Received or later shows the job under Orders</span></div>
             <div className="field"><label htmlFor="c-type">Job type</label>
               <select id="c-type" value={job.job_type || 'Customer job'} onChange={(e) => upd({ job_type: e.target.value })}>{JOB_TYPES.map((s) => <option key={s}>{s}</option>)}</select></div>
             <div className="field"><label htmlFor="c-pay">Payment</label>
@@ -216,6 +218,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
             <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {job.invoice_no ? 'invoice' : 'quote'}</button>
+            {job.id && <button className="btn" type="button" onClick={() => setShowPhotos(true)}>Photos &amp; hand-in</button>}
             {me?.role === 'owner' && job.id && !job.invoice_no && (confirmDel
               ? <button className="btn small danger" type="button" onClick={deleteJob}>Confirm: delete {job.quote_no}</button>
               : <button className="btn small ghost" type="button" onClick={() => setConfirmDel(true)}>Delete quote</button>)}
@@ -224,6 +227,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
         </aside>
       </div>
 
+      {showPhotos && <JobFile job={job} me={me} toast={toast} onClose={() => setShowPhotos(false)} />}
       {showDoc && <QuoteDoc job={job} settings={settings} onClose={() => setShowDoc(false)} onSent={async (msg) => {
         toast(msg); setShowDoc(false)
         const { data } = await supabase.from('jobs').select('*').eq('id', job.id).single() // status may now be Quote sent

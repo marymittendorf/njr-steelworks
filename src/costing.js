@@ -45,7 +45,7 @@ export const TEMPLATE_FOR_REQUEST = {
 }
 
 // Job stage (where the work is). Payment is tracked separately: see src/orders.js.
-export const STATUSES = ['Draft', 'Quote sent', 'Accepted', 'In workshop', 'Ready', 'Delivered', 'Declined']
+export const STATUSES = ['Draft', 'Quote sent', 'Received', 'In production', 'Ready', 'Delivered', 'Declined']
 
 export const n = (v) => {
   const x = parseFloat(v)

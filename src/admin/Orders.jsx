@@ -5,20 +5,22 @@ import { ORDER_STAGES, PAYMENT_STATUSES, isStockBuild, moveJob, nextStep, shortS
 import { money } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
+import JobFile from './JobFile.jsx'
 
 const TABS = [
-  ['Accepted', 'Not started'],
-  ['In workshop', 'In workshop'],
+  ['Received', 'Received'],
+  ['In production', 'In production'],
   ['Ready', 'Ready'],
   ['Delivered', 'Delivered'],
   ['all', 'All orders'],
 ]
 
-export default function Orders({ settings, prices, go, toast }) {
+export default function Orders({ settings, prices, go, toast, me }) {
+  const [photosFor, setPhotosFor] = useState(null)
   const [jobs, setJobs] = useState(null)
   const [stockCount, setStockCount] = useState(0)
   const [error, setError] = useState(null)
-  const [tab, setTab] = useState('Accepted')
+  const [tab, setTab] = useState('Received')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(null)
   const [importing, setImporting] = useState(false)
@@ -60,7 +62,7 @@ export default function Orders({ settings, prices, go, toast }) {
       draft: {
         ...fromTemplate('trailer', prices.filter((p) => p.active)),
         customer: 'Stock build', phone: '', email: '', notes: '', units: 1, galv: false,
-        markup: settings.markup, status: 'Accepted', job_type: 'Built for stock', payment_status: 'Paid',
+        markup: settings.markup, status: 'Received', job_type: 'Built for stock', payment_status: 'Paid',
         request_id: null, rates: ratesFrom(settings),
       },
     })
@@ -69,7 +71,7 @@ export default function Orders({ settings, prices, go, toast }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Orders</h1><p>Accepted jobs from start to delivery. Double-click a row to open its costing.</p></div>
+        <div><h1>Orders</h1><p>Jobs from received to delivered. Double-click a row to open its costing.</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn primary" type="button" onClick={() => setImporting(true)}>Upload PDF quote</button>
           <button className="btn" type="button" onClick={newStockBuild}>Add stock build</button>
@@ -79,7 +81,7 @@ export default function Orders({ settings, prices, go, toast }) {
       <ErrorNote error={error} />
 
       <div className="kpis">
-        {[['Accepted', 'Not yet started'], ['In workshop', 'In the workshop'], ['Ready', 'Ready for delivery']].map(([stage, label]) => (
+        {[['Received', 'Received, not started'], ['In production', 'In production'], ['Ready', 'Ready for delivery']].map(([stage, label]) => (
           <button key={stage} type="button" className={`kpi kpi-btn${tab === stage ? ' on' : ''}`} onClick={() => setTab(stage)}>
             <span className="label">{label}</span><b className="num">{count(stage)}</b>
           </button>
@@ -101,7 +103,7 @@ export default function Orders({ settings, prices, go, toast }) {
       </div>
 
       {!shown.length ? (
-        <div className="card hint">{jobs.length ? 'No orders here.' : 'No orders yet. When a quote is marked Accepted it shows up here.'}</div>
+        <div className="card hint">{jobs.length ? 'No orders here.' : 'No orders yet. When a quote is accepted (stage Received) it shows up here.'}</div>
       ) : (
         <div className="tbl-wrap"><table>
           <thead><tr><th>Stage</th><th>Customer</th><th>Job</th><th>Payment</th><th>Timeline</th><th className="r">Total</th></tr></thead>
@@ -116,7 +118,8 @@ export default function Orders({ settings, prices, go, toast }) {
                     {step && <div style={{ marginTop: 6 }}>
                       <button className="btn small" type="button" disabled={busy === j.id} onClick={() => advance(j, step[0], step[1])}>{step[1]}</button>
                     </div>}
-                    {!stock && ['Ready', 'In workshop'].includes(j.status) && (
+                    <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => setPhotosFor(j)}>Photos &amp; hand-in</button></div>
+                    {!stock && ['Ready', 'In production'].includes(j.status) && (
                       <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => go('deliveries', { jobId: j.id })}>Book delivery</button></div>
                     )}
                   </td>
@@ -143,8 +146,9 @@ export default function Orders({ settings, prices, go, toast }) {
           </tbody>
         </table></div>
       )}
+      {photosFor && <JobFile job={photosFor} me={me} toast={toast} onClose={() => setPhotosFor(null)} />}
       {importing && <ImportQuote settings={settings} onClose={() => setImporting(false)} onCreated={(job) => { setImporting(false); setTab(job.status); toast(`Order created for ${job.customer}: invoice ${job.invoice_no}`); load() }} />}
-      <p className="hint">Tip: double-click any row to open it. Moving a quote to Accepted on the costing screen puts it here.</p>
+      <p className="hint">Tip: double-click any row to open it. Setting a quote to Received on the costing screen puts it here.</p>
     </>
   )
 }

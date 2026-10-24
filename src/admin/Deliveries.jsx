@@ -26,7 +26,7 @@ export default function Deliveries({ target, toast }) {
     const [d, j] = await Promise.all([
       supabase.from('deliveries').select('*').order('delivery_date').order('delivery_time', { nullsFirst: false }),
       supabase.from('jobs').select('id,quote_no,customer,phone,title,units,status,job_type,accepted_at,production_started_at,ready_at,delivered_at')
-        .in('status', ['Accepted', 'In workshop', 'Ready', 'Delivered']).eq('job_type', 'Customer job').order('created_at', { ascending: false }),
+        .in('status', ['Received', 'In production', 'Ready', 'Delivered']).eq('job_type', 'Customer job').order('created_at', { ascending: false }),
     ])
     setList(d.data || []); setOrders(j.data || []); setError(d.error || j.error)
     return j.data || []
@@ -189,7 +189,7 @@ export default function Deliveries({ target, toast }) {
   )
 }
 
-function SignDialog({ delivery, onCancel, onSave }) {
+export function SignDialog({ delivery, onCancel, onSave, title, statement }) {
   const canvas = useRef(null)
   const drawing = useRef(false)
   const [name, setName] = useState(delivery.customer)
@@ -219,12 +219,12 @@ function SignDialog({ delivery, onCancel, onSave }) {
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div className="card" style={{ maxWidth: 560, margin: '0 auto' }}>
-        <h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>{delivery.kind} done</h3>
+        <h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>{title || `${delivery.kind} done`}</h3>
         <p className="hint">{delivery.what || delivery.customer}. Hand the screen to the customer to sign.</p>
         <div className="field"><label htmlFor="sg-name">Name of person signing</label><input id="sg-name" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="field" style={{ marginTop: 12 }}><span className="flabel">Signature</span>
           <canvas ref={canvas} className="sig-pad" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} aria-label="Signature pad" /></div>
-        <p className="hint">By signing, the customer confirms they received the items in good order.</p>
+        <p className="hint">{statement || 'By signing, the customer confirms they received the items in good order.'}</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           <button className="btn primary" type="button" disabled={!hasInk || !name.trim() || busy} onClick={save}>{busy ? 'Saving…' : 'Save signature'}</button>
           <button className="btn ghost" type="button" onClick={clear}>Clear</button>

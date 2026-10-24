@@ -47,7 +47,7 @@ export default function Jobs({ go }) {
   return (
     <>
       <div className="pagehead">
-        <div><h1>Quotes</h1><p>Drafts and quotes waiting for the customer. Accepted quotes move to Orders. Click a row to open it.</p></div>
+        <div><h1>Quotes</h1><p>Drafts and quotes waiting for the customer. Accepted quotes (stage Received) move to Orders. Click a row to open it.</p></div>
         <button className="btn primary" type="button" onClick={() => go('cost', null)}>New costing</button>
       </div>
       <div className="filters" role="group" aria-label="Filter by status">

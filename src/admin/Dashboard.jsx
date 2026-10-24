@@ -26,9 +26,9 @@ export default function Dashboard({ go }) {
   const rows = jobs.map((j) => ({ j, t: calc(j) }))
   const sum = (a) => a.reduce((s, x) => s + x.t.total, 0)
   const awaiting = rows.filter((x) => x.j.status === 'Quote sent')
-  const onHand = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Accepted', 'In workshop', 'Ready'].includes(x.j.status))
+  const onHand = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready'].includes(x.j.status))
   const owed = rows.filter((x) => x.j.invoice_no && x.j.payment_status !== 'Paid')
-  const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Accepted', 'In workshop', 'Ready', 'Delivered'].includes(x.j.status))
+  const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready', 'Delivered'].includes(x.j.status))
   const avgMargin = won.length ? won.reduce((a, x) => a + x.t.margin, 0) / won.length : 0
   const agg = won.reduce((a, { t }) => ({
     m: a.m + t.materials + t.galv + t.extras, l: a.l + t.labour + t.consumables, o: a.o + t.overhead, p: a.p + t.markup,

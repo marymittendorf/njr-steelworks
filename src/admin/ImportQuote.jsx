@@ -32,12 +32,12 @@ export default function ImportQuote({ settings, onClose, onCreated }) {
       setF({
         customer: q.customer || '', phone: q.phone || '', number: q.number || '', date: q.date || today(),
         vatOn, items: items.map((i) => ({ desc: i.desc, amount: i.amount ?? '' })),
-        status: 'Accepted', payment_status: 'Awaiting deposit', linesAddUp: q.linesAddUp,
+        status: 'Received', payment_status: 'Awaiting deposit', linesAddUp: q.linesAddUp,
       })
       setDocTotal(q.total)
     } catch (err) {
       setError(err.message)
-      setF({ customer: '', phone: '', number: '', date: today(), vatOn: true, items: [{ desc: '', amount: '' }], status: 'Accepted', payment_status: 'Awaiting deposit', linesAddUp: false })
+      setF({ customer: '', phone: '', number: '', date: today(), vatOn: true, items: [{ desc: '', amount: '' }], status: 'Received', payment_status: 'Awaiting deposit', linesAddUp: false })
     } finally { setReading(null) }
   }
 
@@ -123,7 +123,7 @@ export default function ImportQuote({ settings, onClose, onCreated }) {
 
             <div className="fgrid" style={{ marginTop: 12 }}>
               <div className="field"><label htmlFor="iq-stage">Stage</label>
-                <select id="iq-stage" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option>Accepted</option><option>In workshop</option><option>Ready</option></select></div>
+                <select id="iq-stage" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option>Received</option><option>In production</option><option>Ready</option></select></div>
               <div className="field"><label htmlFor="iq-pay">Payment</label>
                 <select id="iq-pay" value={f.payment_status} onChange={(e) => setF({ ...f, payment_status: e.target.value })}>{PAYMENT_STATUSES.map((p) => <option key={p}>{p}</option>)}</select></div>
             </div>
