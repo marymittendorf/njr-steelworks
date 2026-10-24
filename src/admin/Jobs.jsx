@@ -5,7 +5,7 @@ import { money, shortDate } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 
 export function JobsTable({ jobs, go }) {
-  if (!jobs.length) return <div className="card hint">No jobs here yet. Cost a website request, or start a new costing.</div>
+  if (!jobs.length) return <div className="card hint">No jobs here yet. Open a website request under Requests, or press New quote.</div>
   return (
     <div className="tbl-wrap"><table>
       <thead><tr><th>Quote</th><th>Date</th><th>Customer</th><th>Job</th><th>Status</th><th className="r">Total incl. VAT</th><th className="r">Margin</th></tr></thead>

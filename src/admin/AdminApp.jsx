@@ -42,7 +42,7 @@ const PAGES = [
   ['deliveries', 'Deliveries'],
   ['products', 'Products'],
   ['stock', 'Stock'],
-  ['cost', 'New quote'],
+  ['cost', 'Quote'], // opened from Quotes, not shown in the menu
   ['expenses', 'Expenses'],
   ['petty', 'Petty cash'],
   ['gallery', 'Website photos'],
@@ -141,9 +141,9 @@ function StaffShell({ session }) {
     <div className="admin">
       <nav className="side" aria-label="Back end">
         <a className="brand" href="/"><img src="/logo.webp" alt="" /><b>NJR <span>ADMIN</span></b></a>
-        {PAGES.filter(([k]) => k !== 'staff' || staff.role === 'owner').map(([k, label]) => (
-          <button key={k} type="button" aria-current={page === k ? 'page' : undefined}
-            onClick={() => { if (!(k === 'cost' && page === 'cost')) go(k) }}>
+        {PAGES.filter(([k]) => k !== 'cost' && (k !== 'staff' || staff.role === 'owner')).map(([k, label]) => (
+          <button key={k} type="button" aria-current={page === k || (k === 'jobs' && page === 'cost') ? 'page' : undefined}
+            onClick={() => go(k)}>
             {label}{k === 'requests' && newCount > 0 && <span className="count">{newCount}</span>}
           </button>
         ))}
