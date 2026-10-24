@@ -45,6 +45,11 @@ export default function Expenses({ toast, me }) {
   const sum = (k) => shown.reduce((a, e) => a + n(e[k]), 0)
   const byCat = Object.entries(shown.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + n(e.total) }), {})).sort((a, b) => b[1] - a[1])
 
+  async function markChecked(e) {
+    const { error } = await supabase.from('expenses').update({ needs_review: false }).eq('id', e.id)
+    if (error) setError(error); else load()
+  }
+
   async function removeExpense(e) {
     const { error } = await supabase.from('expenses').delete().eq('id', e.id)
     if (error) { setError(error); return }
@@ -162,7 +167,8 @@ export default function Expenses({ toast, me }) {
             {shown.map((e) => (
               <tr key={e.id}>
                 <td className="num" style={{ whiteSpace: 'nowrap' }}>{shortDate(e.paid_on)}</td>
-                <td>{e.supplier}{e.payment_method && <div className="hint" style={{ fontSize: '.8rem' }}>{e.payment_method}</div>}</td>
+                <td>{e.supplier}{e.payment_method && <div className="hint" style={{ fontSize: '.8rem' }}>{e.payment_method}{e.fingerprint && ' · on bank statement'}</div>}
+                  {e.needs_review && <div><span className="pill st-New">From bank: check</span> <button className="linkbtn" type="button" onClick={() => markChecked(e)}>Checked</button></div>}</td>
                 <td>{e.description}{e.notes && <div className="hint" style={{ fontSize: '.8rem' }}>{e.notes}</div>}</td>
                 <td className="hint">{e.category}</td>
                 <td className="r num">{money(e.amount_excl)}</td>

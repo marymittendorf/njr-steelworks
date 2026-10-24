@@ -315,3 +315,9 @@ label.btn input[type=file]{display:none}
 
 /* Invoices & payments */
 .pay-form{border:1px dashed var(--accent);border-radius:8px;padding:14px;background:rgba(244,122,31,.05)}
+
+/* Banking */
+.acc-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.bank-line{padding:14px 18px}
+.sugg{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px dashed var(--line)}
+.sugg > span:nth-child(2){flex:1;min-width:200px}

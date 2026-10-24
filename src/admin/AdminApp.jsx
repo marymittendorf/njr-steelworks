@@ -7,6 +7,7 @@ import Jobs from './Jobs.jsx'
 import JobCosting from './JobCosting.jsx'
 import Orders from './Orders.jsx'
 import Invoices from './Invoices.jsx'
+import Banking from './Banking.jsx'
 import Stock from './Stock.jsx'
 import Deliveries from './Deliveries.jsx'
 import Expenses from './Expenses.jsx'
@@ -37,6 +38,7 @@ const PAGES = [
   ['jobs', 'Quotes'],
   ['orders', 'Orders'],
   ['invoices', 'Invoices'],
+  ['banking', 'Banking'],
   ['deliveries', 'Deliveries'],
   ['stock', 'Stock'],
   ['cost', 'Job costing'],
@@ -156,6 +158,7 @@ function StaffShell({ session }) {
             {page === 'requests' && <Requests {...props} />}
             {page === 'jobs' && <Jobs {...props} />}
             {page === 'orders' && <Orders {...props} />}
+            {page === 'banking' && <Banking {...props} />}
             {page === 'invoices' && <Invoices key={invoiceTarget?.nonce || 'inv'} target={invoiceTarget} {...props} />}
             {page === 'deliveries' && <Deliveries key={deliveryTarget?.nonce || 'cal'} target={deliveryTarget} {...props} />}
             {page === 'stock' && <Stock {...props} />}
