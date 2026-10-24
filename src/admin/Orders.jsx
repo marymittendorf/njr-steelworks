@@ -7,7 +7,7 @@ import { money } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
 import JobFile from './JobFile.jsx'
-import PartsChecklist from './PartsChecklist.jsx'
+import PartsChecklist, { jobParts } from './PartsChecklist.jsx'
 
 const TABS = [
   ['Received', 'Received'],
@@ -117,7 +117,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
                       <button className="btn small" type="button" disabled={busy === j.id} onClick={() => advance(j, step[0], step[1])}>{step[1]}</button>
                     </div>}
                     <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => setPhotosFor(j)}>Photos &amp; hand-in</button></div>
-                    {(j.mats || []).length > 0 && <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Parts {(j.mats || []).filter((m) => m.have).length}/{(j.mats || []).length}</button></div>}
+                    {jobParts(j).length > 0 && <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Parts {jobParts(j).filter((x) => x.have).length}/{jobParts(j).length}</button></div>}
                     {!stock && ['Ready', 'In production'].includes(j.status) && (
                       <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => go('deliveries', { jobId: j.id })}>Book delivery</button></div>
                     )}

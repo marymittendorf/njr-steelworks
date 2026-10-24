@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { fromTemplate, ratesFrom, TEMPLATE_FOR_REQUEST } from '../costing.js'
+import { fromTemplate, productLine, ratesFrom, TEMPLATE_FOR_REQUEST } from '../costing.js'
 import { money0, shortDate, waNumber } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 
@@ -24,8 +24,24 @@ export default function Requests({ settings, prices, go, refreshCount }) {
     if (error) setError(error); else { load(); refreshCount() }
   }
 
-  function costIt(r) {
+  async function costIt(r) {
     const tpl = TEMPLATE_FOR_REQUEST[r.type] || 'custom'
+    const picked = r.ai_estimate?.products
+    if (picked) {
+      // From the website's instant price: quote the products the customer picked, at today's prices.
+      const { data: catalogue, error } = await supabase.from('products').select('*').in('id', picked.map((x) => x.product_id))
+      if (error) { setError(error); return }
+      const rates = ratesFrom(settings)
+      const lines = picked.map((x) => catalogue.find((c) => c.id === x.product_id)).map((c, i) => c && productLine(c, prices, rates, picked[i].options, picked[i].qty)).filter(Boolean)
+      go('cost', {
+        draft: {
+          title: r.ai_estimate.title, mats: [], labour: [], extras: [], products: lines,
+          customer: r.name, phone: r.phone, email: r.email || '', notes: r.detail || '',
+          units: 1, galv: false, markup: settings.markup, status: 'Draft', request_id: r.id, rates,
+        },
+      })
+      return
+    }
     const ai = r.ai_estimate && !r.ai_estimate.failed ? r.ai_estimate : null
     go('cost', {
       draft: {
@@ -62,7 +78,9 @@ export default function Requests({ settings, prices, go, refreshCount }) {
             {r.email && <a href={`mailto:${r.email}`}>{r.email}</a>}
           </div>
           <div className="label" style={{ color: 'var(--accent-hi)' }}>{r.type} · {r.timing}{r.source === 'AI estimate' && ' · from the AI estimator'}{r.source === 'Calculator' && ' · from the instant price calculator'}</div>
-          {r.ai_estimate && (r.ai_estimate.failed
+          {r.ai_estimate?.products
+            ? <div className="ai-box"><b>Customer picked {r.ai_estimate.title}: shown {money0(r.ai_estimate.total)} incl. VAT</b></div>
+            : r.ai_estimate && (r.ai_estimate.failed
             ? <div className="ai-box"><b>The estimator couldn't price this.</b>{r.ai_estimate.questions?.length > 0 && <> It would ask: {r.ai_estimate.questions.join(' ')}</>}</div>
             : <div className="ai-box">
                 <div><b>Customer was shown {money0(r.ai_estimate.low)} – {money0(r.ai_estimate.high)}</b> <span className="hint">(worked out at {money0(r.ai_estimate.total)}{r.ai_estimate.confidence !== 'calculator' && `, ${r.ai_estimate.confidence} confidence`})</span></div>

@@ -99,15 +99,24 @@ export function calc(job) {
   const extras = job.extras.reduce((a, e) => a + n(e.amount), 0)
   const direct = (materials + galv + labour + consumables + extras) * u
   const overhead = (direct * r.overhead) / 100
-  const cost = direct + overhead
-  const markup = (cost * n(job.markup)) / 100
-  const excl = cost + markup
+  const costedCost = direct + overhead
+  const costedExcl = costedCost * (1 + n(job.markup) / 100)
+  // Products ("1 × 2 m³ skip") are sold at their own price; their cost comes from their parts and hours.
+  let productsExcl = 0
+  let productsCost = 0
+  for (const pl of job.products || []) {
+    productsExcl += (n(pl.price_incl) / (1 + r.vat / 100)) * n(pl.qty)
+    productsCost += n(pl.cost_excl) * n(pl.qty)
+  }
+  const cost = costedCost + productsCost
+  const excl = costedExcl + productsExcl
+  const markup = excl - cost // profit
   const vat = (excl * r.vat) / 100
   const total = excl + vat
   return {
     u, kg: kg * u, hours: hours * u,
     materials: materials * u, labour: labour * u, consumables: consumables * u, galv: galv * u, extras: extras * u,
-    direct, overhead, cost, markup, excl, vat, total,
+    direct, overhead, costedCost, costedExcl, productsExcl, productsCost, cost, markup, excl, vat, total,
     margin: excl ? (markup / excl) * 100 : 0,
     deposit: (total * r.deposit) / 100,
   }
@@ -117,8 +126,11 @@ export function calc(job) {
 // across the lines in proportion to their cost. Lines always add up to excl.
 export function customerLines(job) {
   const t = calc(job)
-  const factor = t.direct ? t.excl / t.direct : 1
-  const lines = []
+  const factor = t.direct ? t.costedExcl / t.direct : 1
+  const lines = (job.products || []).map((pl) => ({
+    desc: pl.options?.length ? `${pl.name} (${pl.options.join(', ')})` : pl.name,
+    qty: n(pl.qty), amount: (n(pl.price_incl) / (1 + job.rates.vat / 100)) * n(pl.qty),
+  }))
   const made = t.materials + t.labour + t.consumables
   if (made > 0) lines.push({ desc: `${job.title}: steel, hardware & fabrication`, qty: t.u, amount: made * factor })
   if (t.galv) lines.push({ desc: 'Hot-dip galvanising', qty: t.u, amount: t.galv * factor })
@@ -134,4 +146,49 @@ export function computeFromPrices(settings, prices) {
     out[key] = Math.round(calc(job).total / 100) * 100
   }
   return out
+}
+
+// ---------------------------------------------------------------------------
+// Products: finished items set up once (parts + hours), sold at NJR's own price.
+// ---------------------------------------------------------------------------
+
+// What one product costs NJR today (excl. VAT, incl. workshop overhead), from current part prices.
+export function productCost(product, prices, rates) {
+  const byId = Object.fromEntries(prices.map((x) => [x.id, x]))
+  const parts = (product.mats || []).map((m) => {
+    const pr = byId[m.id]
+    return { id: m.id, name: pr?.name || m.name || m.id, unit: pr?.unit || 'each', qty: n(m.qty), cost: n(pr?.cost), missing: !pr }
+  })
+  const materials = parts.reduce((a, x) => a + x.qty * x.cost, 0)
+  const hours = (product.labour || []).reduce((a, l) => a + n(l.hours), 0)
+  const labour = hours * n(rates.labour) + hours * n(rates.consumables)
+  const extras = (product.extras || []).reduce((a, x) => a + n(x.amount), 0)
+  const direct = materials + labour + extras
+  const cost = direct * (1 + n(rates.overhead) / 100)
+  return { parts, materials, hours, labour, extras, direct, cost, unpriced: parts.filter((x) => !x.cost || x.missing) }
+}
+
+// Suggested selling price incl. VAT: cost + markup + VAT, rounded up to the next R10.
+export function suggestedPrice(cost, markupPct, vatPct) {
+  return Math.ceil((cost * (1 + n(markupPct) / 100) * (1 + n(vatPct) / 100)) / 10) * 10
+}
+
+// Margin (profit as % of the price excl. VAT) for a selling price incl. VAT.
+export function marginAt(priceIncl, cost, vatPct) {
+  const excl = n(priceIncl) / (1 + n(vatPct) / 100)
+  return excl > 0 ? ((excl - cost) / excl) * 100 : 0
+}
+
+// A product as a line on a quote: price and cost each (with chosen options), and its parts snapshot.
+export function productLine(product, prices, rates, chosen = [], qty = 1) {
+  const pc = productCost(product, prices, rates)
+  const opts = (product.options || []).filter((o) => chosen.includes(o.name))
+  return {
+    product_id: product.id, name: product.name, qty,
+    options: opts.map((o) => o.name),
+    price_incl: Math.round((n(product.price_incl) + opts.reduce((a, o) => a + n(o.price_incl), 0)) * 100) / 100,
+    cost_excl: Math.round((pc.cost + opts.reduce((a, o) => a + n(o.cost_excl), 0)) * 100) / 100,
+    parts: pc.parts.map((x) => ({ id: x.id, name: x.name, unit: x.unit, qty: x.qty, cost: x.cost, supplied_by: 'NJR', have: false })),
+    labour: product.labour || [],
+  }
 }

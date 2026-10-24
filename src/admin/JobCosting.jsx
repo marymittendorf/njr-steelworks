@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, customPart, fromTemplate, matLine, n, ratesFrom, STATUSES, TEMPLATES } from '../costing.js'
+import { calc, customPart, fromTemplate, matLine, n, productLine, ratesFrom, STATUSES, TEMPLATES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../orders.js'
 
-const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'notes', 'request_id', 'mats', 'labour', 'extras', 'rates']
+const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
 
 function blankJob(settings, prices) {
   return {
-    ...fromTemplate('trailer', prices),
+    // Starts empty: add products, or load a template for a one-off job.
+    title: '', mats: [], labour: [], extras: [], products: [],
     customer: '', phone: '', email: '', notes: '', units: 1, galv: false,
     markup: settings.markup, status: 'Draft', request_id: null, rates: ratesFrom(settings),
   }
@@ -20,6 +21,10 @@ function blankJob(settings, prices) {
 export default function JobCosting({ target, settings, prices, toast, go, me }) {
   const [confirmDel, setConfirmDel] = useState(false)
   const [showPhotos, setShowPhotos] = useState(false)
+  const [catalogue, setCatalogue] = useState([])
+  const settingsRates = ratesFrom(settings)
+  const [adding, setAdding] = useState(null) // { id, qty, chosen: [] }
+  useEffect(() => { supabase.from('products').select('*').eq('active', true).order('category').order('name').then(({ data }) => setCatalogue(data || [])) }, [])
   const active = prices.filter((p) => p.active)
   const [job, setJob] = useState(() => target?.jobId ? null : (target?.draft || blankJob(settings, active)))
   const [error, setError] = useState(null)
@@ -37,9 +42,9 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const t = calc(job)
   const r = job.rates
   const upd = (patch) => setJob((j) => ({ ...j, ...patch }))
-  const updRow = (list, i, patch) => setJob((j) => ({ ...j, [list]: j[list].map((row, k) => (k === i ? { ...row, ...patch } : row)) }))
-  const delRow = (list, i) => setJob((j) => ({ ...j, [list]: j[list].filter((_, k) => k !== i) }))
-  const addRow = (list, row) => setJob((j) => ({ ...j, [list]: [...j[list], row] }))
+  const updRow = (list, i, patch) => setJob((j) => ({ ...j, [list]: (j[list] || []).map((row, k) => (k === i ? { ...row, ...patch } : row)) }))
+  const delRow = (list, i) => setJob((j) => ({ ...j, [list]: (j[list] || []).filter((_, k) => k !== i) }))
+  const addRow = (list, row) => setJob((j) => ({ ...j, [list]: [...(j[list] || []), row] }))
   const priceById = Object.fromEntries(prices.map((p) => [p.id, p]))
 
   // Prices or rates differ from what this quote was costed at?
@@ -65,6 +70,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     payload.mats = payload.mats.map((m) => ({ ...m, qty: n(m.qty), cost: n(m.cost) }))
     payload.labour = payload.labour.map((l) => ({ ...l, hours: n(l.hours) }))
     payload.extras = payload.extras.map((x) => ({ ...x, amount: n(x.amount) }))
+    payload.products = (job.products || []).map((x) => ({ ...x, qty: n(x.qty), price_incl: n(x.price_incl) }))
     Object.assign(payload, stampsFor(job, payload.status)) // date-stamp the order timeline
     let res
     if (job.id) res = await supabase.from('jobs').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', job.id).select().single()
@@ -138,6 +144,40 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
               <label className="check" htmlFor="c-galv"><input id="c-galv" type="checkbox" checked={job.galv} onChange={(e) => upd({ galv: e.target.checked })} /> Hot-dip galvanise (R{r.galv}/kg)</label></div>
             <div className="field full"><label htmlFor="c-notes">Notes (internal)</label><textarea id="c-notes" style={{ minHeight: 70 }} value={job.notes || ''} onChange={(e) => upd({ notes: e.target.value })} /></div>
           </div></div>
+
+          <div className="block">
+            <div className="block-head"><h3>Products</h3>
+              {!adding && <button className="btn small primary" type="button" disabled={!catalogue.length} onClick={() => setAdding({ id: catalogue[0]?.id, qty: 1, chosen: [] })}>Add product</button>}</div>
+            {!catalogue.length && <p className="hint" style={{ marginTop: 0 }}>No products set up yet. Set them up under Products (e.g. "2 m³ skip"), then add them here in one click.</p>}
+            {adding && (() => {
+              const prod = catalogue.find((x) => x.id === adding.id)
+              return (
+                <div className="sugg" style={{ borderTop: 0 }}>
+                  <select aria-label="Product" value={adding.id} onChange={(e) => setAdding({ id: e.target.value, qty: adding.qty, chosen: [] })} style={{ flex: 1, minWidth: 200 }}>
+                    {catalogue.map((x) => <option key={x.id} value={x.id}>{x.name}{x.price_incl ? ` · ${money0(x.price_incl)}` : ' · no price yet'}</option>)}
+                  </select>
+                  <input className="qty num" aria-label="How many" type="number" min="1" step="1" value={adding.qty} onChange={(e) => setAdding({ ...adding, qty: e.target.value })} />
+                  {(prod?.options || []).map((o) => (
+                    <label key={o.name} className="check"><input type="checkbox" checked={adding.chosen.includes(o.name)} onChange={(e) => setAdding({ ...adding, chosen: e.target.checked ? [...adding.chosen, o.name] : adding.chosen.filter((c) => c !== o.name) })} /> {o.name} (+{money0(o.price_incl)})</label>
+                  ))}
+                  <button className="btn small primary" type="button" disabled={!prod} onClick={() => { addRow('products', productLine(prod, prices, settingsRates, adding.chosen, Math.max(1, n(adding.qty)))); if (!job.title) upd({ title: prod.name }); setAdding(null) }}>Add</button>
+                  <button className="btn small ghost" type="button" onClick={() => setAdding(null)}>Cancel</button>
+                </div>)
+            })()}
+            {(job.products || []).length > 0 && <div className="tbl-wrap"><table>
+              <thead><tr><th>Product</th><th className="r">Qty</th><th className="r">Price each incl. VAT</th><th className="r">Costs you each</th><th className="r">Line incl. VAT</th><th /></tr></thead>
+              <tbody>{job.products.map((pl, i) => (
+                <tr key={i}>
+                  <td><b>{pl.name}</b>{pl.options?.length > 0 && <div className="hint">{pl.options.join(', ')}</div>}</td>
+                  <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="1" step="1" value={pl.qty} onChange={(e) => updRow('products', i, { qty: e.target.value })} /></td>
+                  <td className="r"><input className="money num" aria-label="Price each" type="number" min="0" step="10" value={pl.price_incl} onChange={(e) => updRow('products', i, { price_incl: e.target.value })} /></td>
+                  <td className="r num hint">{money(pl.cost_excl)}</td>
+                  <td className="r num">{money(n(pl.qty) * n(pl.price_incl))}</td>
+                  <td><button className="x" type="button" aria-label={`Remove ${pl.name}`} onClick={() => delRow('products', i)}>×</button></td>
+                </tr>))}</tbody>
+            </table></div>}
+            {(job.products || []).length > 0 && <p className="hint">The customer sees one line per product. You can change the price for this quote; the product's own price stays the same.</p>}
+          </div>
 
           <div className="block">
             <div className="block-head"><h3>Parts &amp; materials</h3>
@@ -217,6 +257,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
         <aside className="sheet">
           <h3>Cost sheet</h3>
           <dl>
+            {t.productsExcl > 0 && <><dt>Products (sold excl. VAT)</dt><dd>{money(t.productsExcl)}</dd><dt className="hint">Products cost you</dt><dd className="hint">{money(t.productsCost)}</dd></>}
             <dt>Steel &amp; hardware <span className="hint">({t.kg.toFixed(0)} kg)</span></dt><dd>{money(t.materials)}</dd>
             {t.galv > 0 && <><dt>Galvanising</dt><dd>{money(t.galv)}</dd></>}
             <dt>Labour <span className="hint">({t.hours.toFixed(1)} h)</span></dt><dd>{money(t.labour)}</dd>
@@ -225,7 +266,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
             <dt>Workshop overhead {r.overhead}%</dt><dd>{money(t.overhead)}</dd>
             <div className="rule" />
             <dt><b>Total cost</b></dt><dd><b>{money(t.cost)}</b></dd>
-            <dt>Markup {n(job.markup)}%</dt><dd>{money(t.markup)}</dd>
+            <dt>Profit{t.productsExcl > 0 ? '' : ` (markup ${n(job.markup)}%)`}</dt><dd>{money(t.markup)}</dd>
             <dt>Price excl. VAT</dt><dd>{money(t.excl)}</dd>
             <dt>VAT {r.vat}%</dt><dd>{money(t.vat)}</dd>
           </dl>

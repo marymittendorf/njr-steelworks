@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calc, customerLines, computeFromPrices, fromTemplate } from './costing.js'
+import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt } from './costing.js'
 
 const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 20, validity: 14, deposit: 50 }
 
@@ -55,4 +55,32 @@ test('parts supplied by the client are listed but not charged', () => {
   const ours = calc({ ...base, mats: [{ qty: 1, cost: 500, kg: 0 }] })
   const withClient = calc({ ...base, mats: [{ qty: 1, cost: 500, kg: 0 }, { qty: 1, cost: 300, kg: 0, supplied_by: 'Client' }] })
   assert.equal(withClient.total, ours.total)
+})
+
+test('products: priced at their own price, cost from parts and hours, options add on', () => {
+  const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 0, validity: 14, deposit: 50 }
+  const prices = [{ id: 'kit', name: 'Laser kit', unit: 'each', cost: 1000 }]
+  const product = { id: 'p1', name: '2 m³ skip', mats: [{ id: 'kit', qty: 2 }], labour: [{ task: 'Weld', hours: 10 }], extras: [],
+    price_incl: 11500, options: [{ name: 'Galvanised', price_incl: 2300, cost_excl: 1500 }] }
+  const pc = productCost(product, prices, rates)
+  assert.equal(pc.cost, (2000 + 3500) * 1.1)            // parts + hours (labour+consumables), + overhead
+  assert.equal(suggestedPrice(pc.cost, 20, 15), 8350)   // 6050 × 1.2 × 1.15 = 8349 → next R10
+  const line = productLine(product, prices, rates, ['Galvanised'], 2)
+  assert.equal(line.price_incl, 13800); assert.equal(line.cost_excl, 7550); assert.equal(line.parts[0].qty, 2)
+  const job = { units: 1, galv: false, markup: 20, rates, mats: [], labour: [], extras: [], products: [line] }
+  const t = calc(job)
+  assert.ok(Math.abs(t.total - 27600) < 1e-6)           // 2 × R13 800 incl. VAT
+  assert.ok(Math.abs(t.cost - 15100) < 1e-6)
+  assert.ok(Math.abs(customerLines(job).reduce((a, l) => a + l.amount, 0) - t.excl) < 1e-6)
+  assert.equal(customerLines(job)[0].desc, '2 m³ skip (Galvanised)')
+  assert.ok(Math.abs(marginAt(11500, 6050, 15) - ((10000 - 6050) / 10000) * 100) < 1e-9)
+})
+
+test('a quote mixing a product with costed extras adds up', () => {
+  const rates = { labour: 300, consumables: 0, overhead: 0, vat: 15, galv: 0, validity: 14, deposit: 50 }
+  const job = { units: 1, galv: false, markup: 0, rates, mats: [], labour: [], extras: [{ desc: 'Delivery', amount: 650 }],
+    products: [{ name: 'Skip', qty: 1, price_incl: 1150, cost_excl: 700, options: [] }] }
+  const t = calc(job)
+  assert.ok(Math.abs(t.excl - (1000 + 650)) < 1e-6)
+  assert.ok(Math.abs(customerLines(job).reduce((a, l) => a + l.amount, 0) - t.excl) < 1e-6)
 })
