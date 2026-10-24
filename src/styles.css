@@ -380,3 +380,4 @@ td .lnk,.lnk{color:var(--info)}
 .picker li.on{background:var(--accent);color:var(--accent-ink)}
 .picker li.on .hint{color:var(--accent-ink)}
 .tbl-wrap.open-ok{overflow:visible}
+tr.picked td{background:rgba(244,122,31,.08)}

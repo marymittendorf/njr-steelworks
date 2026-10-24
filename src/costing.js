@@ -158,7 +158,7 @@ export function computeFromPrices(settings, prices) {
 // What one product costs NJR today (excl. VAT, incl. workshop overhead), from current part prices.
 export function productCost(product, prices, rates) {
   const byId = Object.fromEntries(prices.map((x) => [x.id, x]))
-  const parts = (product.mats || []).map((m) => {
+  const parts = (product.mats || []).filter((m) => m.id).map((m) => { // an empty line (part not chosen yet) doesn't count
     const pr = byId[m.id]
     return { id: m.id, name: pr?.name || m.name || m.id, unit: pr?.unit || 'each', qty: n(m.qty), cost: n(pr?.cost), missing: !pr }
   })

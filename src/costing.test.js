@@ -110,3 +110,9 @@ test('work out a price: suggested price from parts and hours; client parts liste
   const job = { products: [{ ...line, qty: 2, parts: [{ ...line.parts[0], supplied_by: 'Client' }] }], mats: [] }
   assert.equal(clientParts(job)[0].qty, 6)
 })
+
+test('an empty part line (not chosen yet) is ignored, not reported as unpriced', () => {
+  const pc = productCost({ mats: [{ id: 'a', qty: 1 }, { id: '', qty: 1 }], labour: [], extras: [] }, [{ id: 'a', name: 'A', cost: 10 }], rates)
+  assert.equal(pc.parts.length, 1)
+  assert.equal(pc.unpriced.length, 0)
+})

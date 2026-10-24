@@ -3,6 +3,7 @@ import { supabase } from '../supabase.js'
 import { n, productCost, suggestedPrice, marginAt, ratesFrom } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote, PartPicker } from './ui.jsx'
+import PartsPickList from './PartsPickList.jsx'
 
 const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
 const CARD_FOR = { Skips: 'skip', Trailers: 'trailer', Gates: 'gates', Fabrication: 'fabrication', Welding: 'welding' }
@@ -73,6 +74,7 @@ function ProductEditor({ product, prices, settings, rates, me, toast, onClose, o
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [picking, setPicking] = useState(false)
   const active = prices.filter((x) => x.active)
   const pc = productCost(p, prices, rates)
   const markup = p.markup === '' || p.markup == null ? n(settings.markup) : n(p.markup)
@@ -116,7 +118,7 @@ function ProductEditor({ product, prices, settings, rates, me, toast, onClose, o
           <div className="field full"><label htmlFor="pr-spec">Notes for staff (optional)</label><input id="pr-spec" value={p.spec || ''} onChange={(e) => setP({ ...p, spec: e.target.value })} placeholder="e.g. 2 mm laser-cut steel from RT Laser, 4 lifting lugs" /></div>
         </div>
 
-        <div className="block-head" style={{ marginTop: 14 }}><h3>What goes into one</h3><button className="btn small" type="button" disabled={!active.length} onClick={() => setP({ ...p, mats: [...p.mats, { id: '', qty: 1 }] })}>Add part</button></div>
+        <div className="block-head" style={{ marginTop: 14 }}><h3>What goes into one</h3><span style={{ display: 'flex', gap: 8 }}><button className="btn small primary" type="button" disabled={!active.length} onClick={() => setPicking(true)}>Choose parts</button><button className="btn small" type="button" disabled={!active.length} onClick={() => setP({ ...p, mats: [...p.mats, { id: '', qty: 1 }] })}>Add one part</button></span></div>
         <div className="tbl-wrap open-ok"><table>
           <thead><tr><th>Part (from Stock)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
           <tbody>{p.mats.map((x, i) => {
@@ -192,11 +194,14 @@ function ProductEditor({ product, prices, settings, rates, me, toast, onClose, o
         <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
           <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save product'}</button>
           <button className="btn ghost" type="button" onClick={onClose}>Cancel</button>
+          {p.id && <button className="btn" type="button" title="Start a new product from this one, e.g. the 3 m³ skip from the 2 m³"
+            onClick={() => { setP({ ...p, id: undefined, name: `${p.name} (copy)`, on_website: false }); setConfirmDel(false); toast('Copy made: change the name and parts, then save') }}>Copy</button>}
           {p.id && me?.role === 'owner' && (confirmDel
             ? <button className="btn danger" type="button" onClick={remove}>Confirm delete</button>
             : <button className="btn ghost" type="button" onClick={() => setConfirmDel(true)}>Delete</button>)}
         </div>
         <p className="hint">Changing a product doesn't change quotes already made; they keep the price they were quoted at.</p>
+        {picking && <PartsPickList prices={prices} mats={p.mats} onClose={() => setPicking(false)} onApply={(mats) => { setP({ ...p, mats }); setPicking(false) }} />}
       </div>
     </div>
   )

@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { n, productCost, suggestedPrice, workedLine, TEMPLATES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { PartPicker } from './ui.jsx'
+import PartsPickList from './PartsPickList.jsx'
 
 // Pop-up for a one-off line: pick parts from Stock and hours → what it costs and a suggested price.
 export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClose }) {
   const active = prices.filter((p) => p.active)
   const w = line.worked || {}
+  const [picking, setPicking] = useState(false)
   const [r, setR] = useState({
     mats: [...(w.mats || [])], labour: [...(w.labour || [{ task: 'Fabrication & welding', hours: 1 }])],
     extras: [...(w.extras || [])], markup: w.markup ?? n(markup),
@@ -45,7 +47,7 @@ export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClo
             {Object.entries(TEMPLATES).map(([k, v]) => <option key={k} value={k}>{v.title}</option>)}
           </select></div>
 
-        <div className="block-head" style={{ marginTop: 14 }}><h3>Parts</h3><button className="btn small" type="button" disabled={!active.length} onClick={() => setR({ ...r, mats: [...r.mats, { id: '', qty: 1 }] })}>Add part</button></div>
+        <div className="block-head" style={{ marginTop: 14 }}><h3>Parts</h3><span style={{ display: 'flex', gap: 8 }}><button className="btn small primary" type="button" disabled={!active.length} onClick={() => setPicking(true)}>Choose parts</button><button className="btn small" type="button" disabled={!active.length} onClick={() => setR({ ...r, mats: [...r.mats, { id: '', qty: 1 }] })}>Add one part</button></span></div>
         <div className="tbl-wrap open-ok"><table>
           <thead><tr><th>Part (from Stock)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
           <tbody>{r.mats.map((x, i) => {
@@ -91,6 +93,7 @@ export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClo
           <button className="btn ghost" type="button" onClick={onClose}>Cancel</button>
         </div>
       </div>
+      {picking && <PartsPickList prices={prices} mats={r.mats} onClose={() => setPicking(false)} onApply={(mats) => { setR({ ...r, mats }); setPicking(false) }} />}
     </div>
   )
 }
