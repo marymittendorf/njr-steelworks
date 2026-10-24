@@ -290,3 +290,9 @@ tr.clickable:hover td{background:var(--panel-2)}
 input[type=range]{padding:0;accent-color:var(--accent)}
 @media (max-width:760px){.calc-grid{grid-template-columns:1fr 1fr}}
 @media (max-width:480px){.calc-grid{grid-template-columns:1fr}}
+
+/* Clear test data */
+.clear-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.clear-row{align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line)}
+.clear-row input{margin-top:4px}
+@media (max-width:760px){.clear-cols{grid-template-columns:1fr}}

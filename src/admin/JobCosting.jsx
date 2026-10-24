@@ -16,7 +16,8 @@ function blankJob(settings, prices) {
   }
 }
 
-export default function JobCosting({ target, settings, prices, toast, go }) {
+export default function JobCosting({ target, settings, prices, toast, go, me }) {
+  const [confirmDel, setConfirmDel] = useState(false)
   const active = prices.filter((p) => p.active)
   const [job, setJob] = useState(() => target?.jobId ? null : (target?.draft || blankJob(settings, active)))
   const [error, setError] = useState(null)
@@ -73,6 +74,12 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
     setJob(res.data)
     toast(!job.invoice_no && res.data.invoice_no ? `Accepted: invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
     return res.data
+  }
+
+  async function deleteJob() {
+    const { error } = await supabase.from('jobs').delete().eq('id', job.id)
+    if (error) { setError(error); return }
+    toast(`Deleted ${job.quote_no}`); go('jobs')
   }
 
   async function openDoc() {
@@ -209,6 +216,9 @@ export default function JobCosting({ target, settings, prices, toast, go }) {
           <div className="acts">
             <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
             <button className="btn" type="button" disabled={busy} onClick={openDoc}>Customer {job.invoice_no ? 'invoice' : 'quote'}</button>
+            {me?.role === 'owner' && job.id && !job.invoice_no && (confirmDel
+              ? <button className="btn small danger" type="button" onClick={deleteJob}>Confirm: delete {job.quote_no}</button>
+              : <button className="btn small ghost" type="button" onClick={() => setConfirmDel(true)}>Delete quote</button>)}
           </div>
           {error && <div style={{ padding: '0 18px 14px' }}><ErrorNote error={error} /></div>}
         </aside>

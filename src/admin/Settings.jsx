@@ -4,6 +4,7 @@ import { n, computeFromPrices } from '../costing.js'
 import { money0 } from '../format.js'
 import { SERVICES } from '../services.js'
 import { ErrorNote } from './ui.jsx'
+import ClearTestData from './ClearTestData.jsx'
 
 const RATE_FIELDS = [
   ['labour', 'Labour rate (R/hour)', 'Workshop rate per welder-hour'],
@@ -16,7 +17,7 @@ const RATE_FIELDS = [
   ['deposit', 'Deposit (%)', 'Required to book work'],
 ]
 
-export default function Settings({ settings, prices, syncFromPrices, toast }) {
+export default function Settings({ settings, prices, syncFromPrices, toast, me }) {
   const [f, setF] = useState(() => ({
     ...settings,
     people: settings.people.map((p) => ({ ...p })),
@@ -105,6 +106,7 @@ export default function Settings({ settings, prices, syncFromPrices, toast }) {
         <textarea aria-label="Banking details" value={f.bank_details} onChange={(e) => setF({ ...f, bank_details: e.target.value })}
           placeholder={'Bank: …\nAccount name: NJR Steelworks\nAccount no: …\nBranch code: …'} />
       </div>
+      {me?.role === 'owner' && <div style={{ marginTop: 24 }}><ClearTestData toast={toast} /></div>}
     </form>
   )
 }

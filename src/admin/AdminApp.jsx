@@ -128,7 +128,7 @@ function StaffShell({ session }) {
   }
 
   const ready = settings && prices
-  const props = { settings, prices, go, toast, refreshCount }
+  const props = { settings, prices, go, toast, refreshCount, me: staff }
 
   return (
     <div className="admin">

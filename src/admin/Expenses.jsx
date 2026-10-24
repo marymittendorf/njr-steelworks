@@ -18,7 +18,8 @@ function nextDue(iso, frequency) {
 
 const blankRecurring = () => ({ supplier: '', description: '', category: 'Rent & utilities', amount_excl: '', vat_rate: 15, frequency: 'monthly', next_due: today() })
 
-export default function Expenses({ toast }) {
+export default function Expenses({ toast, me }) {
+  const [confirmDel, setConfirmDel] = useState(null)
   const [expenses, setExpenses] = useState(null)
   const [recurring, setRecurring] = useState(null)
   const [error, setError] = useState(null)
@@ -43,6 +44,13 @@ export default function Expenses({ toast }) {
   const shown = expenses.filter((e) => filter === 'all' || month(e.paid_on) === filter)
   const sum = (k) => shown.reduce((a, e) => a + n(e[k]), 0)
   const byCat = Object.entries(shown.reduce((a, e) => ({ ...a, [e.category]: (a[e.category] || 0) + n(e.total) }), {})).sort((a, b) => b[1] - a[1])
+
+  async function removeExpense(e) {
+    const { error } = await supabase.from('expenses').delete().eq('id', e.id)
+    if (error) { setError(error); return }
+    if (e.file_path) await supabase.storage.from('expense-docs').remove([e.file_path])
+    setConfirmDel(null); toast('Expense deleted'); load()
+  }
 
   async function recordPayment(r) {
     const vat = Math.round(n(r.amount_excl) * n(r.vat_rate)) / 100
@@ -149,7 +157,7 @@ export default function Expenses({ toast }) {
             <option value="all">All months</option>
           </select></div>
         <div className="tbl-wrap"><table>
-          <thead><tr><th>Date</th><th>Supplier</th><th>What for</th><th>Category</th><th className="r">Excl. VAT</th><th className="r">VAT</th><th className="r">Total</th><th>Invoice</th></tr></thead>
+          <thead><tr><th>Date</th><th>Supplier</th><th>What for</th><th>Category</th><th className="r">Excl. VAT</th><th className="r">VAT</th><th className="r">Total</th><th>Invoice</th>{me?.role === 'owner' && <th />}</tr></thead>
           <tbody>
             {shown.map((e) => (
               <tr key={e.id}>
@@ -166,11 +174,14 @@ export default function Expenses({ toast }) {
                     ? <button className="linkbtn" type="button" onClick={() => openDoc(e.file_path)}>View</button>
                     : <label className="linkbtn" style={{ cursor: 'pointer' }}>Attach<input type="file" accept="application/pdf,image/*" hidden onChange={(ev) => ev.target.files[0] && attachDoc(e, ev.target.files[0])} /></label>}
                 </td>
+                {me?.role === 'owner' && <td>{confirmDel === e.id
+                  ? <button className="btn small danger" type="button" onClick={() => removeExpense(e)}>Confirm</button>
+                  : <button className="x" type="button" aria-label={`Delete ${e.description}`} onClick={() => setConfirmDel(e.id)}>×</button>}</td>}
               </tr>
             ))}
             {!shown.length && <tr><td colSpan="8" className="hint">No expenses recorded for this period.</td></tr>}
             {shown.length > 0 && (
-              <tr><td colSpan="4"><b>Total</b></td><td className="r num">{money(sum('amount_excl'))}</td><td className="r num">{money(sum('vat'))}</td><td className="r num"><b>{money(sum('total'))}</b></td><td /></tr>
+              <tr><td colSpan="4"><b>Total</b></td><td className="r num">{money(sum('amount_excl'))}</td><td className="r num">{money(sum('vat'))}</td><td className="r num"><b>{money(sum('total'))}</b></td><td />{me?.role === 'owner' && <td />}</tr>
             )}
           </tbody>
         </table></div>
