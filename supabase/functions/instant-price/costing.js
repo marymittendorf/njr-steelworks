@@ -13,9 +13,11 @@ export const TEMPLATES = {
   },
   // 'skip' is the smallest new skip; the website shows its price as "from".
   skip: {
-    title: "2 m³ builder's skip, new build",
-    mats: [['sh45', 3], ['ch100', 1], ['ang50', 2], ['fb50', 1], ['lugs', 1], ['paint', 1]],
-    labour: [['Cut & prep plate', 3], ['Body welding', 8], ['Lugs & reinforcing', 3], ['Grind, prime & paint', 2]],
+    // Steel = RT Laser laser-cut parts, quote JOB-9298 (2 mm MS, R6 745.06 excl. VAT per skip).
+    // Hours are estimates: Nico to confirm.
+    title: "2 m³ mini skip, new build (laser-cut parts)",
+    mats: [['skip2_long1250', 2], ['skip2_long1300', 2], ['skip2_long2310', 2], ['skip2_plate300', 2], ['skip2_floor', 1], ['skip2_front', 2], ['skip2_inside', 2], ['skip2_outside', 4], ['skip2_sides', 2], ['lugs', 1], ['paint', 1]],
+    labour: [['Fit-up & tack laser parts', 3], ['Body welding', 8], ['Lugs & reinforcing', 3], ['Grind, prime & paint', 2]],
   },
   skip3: {
     title: "3 m³ builder's skip, new build",

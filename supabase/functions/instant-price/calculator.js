@@ -78,7 +78,7 @@ export function trailerJob(o = {}) {
 }
 
 const SKIP_NEW = {
-  2: { mats: [['sh45', 3], ['ch100', 1], ['ang50', 2], ['fb50', 1], ['lugs', 1], ['paint', 1]], hours: [3, 8, 3, 2] },
+  2: { mats: [['skip2_long1250', 2], ['skip2_long1300', 2], ['skip2_long2310', 2], ['skip2_plate300', 2], ['skip2_floor', 1], ['skip2_front', 2], ['skip2_inside', 2], ['skip2_outside', 4], ['skip2_sides', 2], ['lugs', 1], ['paint', 1]], hours: [3, 8, 3, 2] }, // RT Laser parts, quote JOB-9298
   3: { mats: [['sh45', 4], ['ch100', 1], ['ang50', 3], ['fb50', 2], ['lugs', 1], ['paint', 1]], hours: [4, 10, 3, 3] },
 }
 
@@ -91,7 +91,7 @@ export function skipJob(o = {}) {
   if (work === 'New build') {
     const r = SKIP_NEW[size]
     mats = r.mats
-    labour = [['Cut & prep plate', r.hours[0]], ['Body welding', r.hours[1]], ['Lugs & reinforcing', r.hours[2]], ['Grind, prime & paint', r.hours[3]]]
+    labour = [[size === 2 ? 'Fit-up & tack laser parts' : 'Cut & prep plate', r.hours[0]], ['Body welding', r.hours[1]], ['Lugs & reinforcing', r.hours[2]], ['Grind, prime & paint', r.hours[3]]]
     title = `${size} m³ builder's skip, new build`
   } else if (work === 'Replace floor') {
     mats = [['sh45', 2], ['ang50', 1], ['paint', 1]]
