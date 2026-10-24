@@ -35,7 +35,7 @@ export default function Requests({ settings, prices, go, refreshCount }) {
       const lines = picked.map((x) => catalogue.find((c) => c.id === x.product_id)).map((c, i) => c && productLine(c, prices, rates, picked[i].options, picked[i].qty)).filter(Boolean)
       go('cost', {
         draft: {
-          title: r.ai_estimate.title, mats: [], labour: [], extras: [], products: lines,
+          title: r.ai_estimate.title, category: catalogue[0]?.category || null, mats: [], labour: [], extras: [], products: lines,
           customer: r.name, phone: r.phone, email: r.email || '', notes: r.detail || '',
           units: 1, galv: false, markup: settings.markup, status: 'Draft', request_id: r.id, rates,
         },
@@ -48,7 +48,7 @@ export default function Requests({ settings, prices, go, refreshCount }) {
         ...fromTemplate(tpl, prices.filter((p) => p.active)),
         customer: r.name, phone: r.phone, email: r.email || '', notes: r.detail || '',
         units: 1, galv: false, markup: settings.markup, status: 'Draft', request_id: r.id,
-        rates: ratesFrom(settings),
+        rates: ratesFrom(settings), category: /skip/i.test(r.type) ? 'Skips' : /trailer/i.test(r.type) ? 'Trailers' : null,
         // Start from the AI's bill of materials when there is one (prices locked at today's list).
         ...(ai ? { title: ai.title, units: ai.units, galv: ai.galv, mats: ai.mats, labour: ai.labour, extras: ai.extras } : {}),
       },

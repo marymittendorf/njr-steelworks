@@ -7,12 +7,14 @@ import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../orders.js'
 
-const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
+export const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
+
+const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'category', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
 
 function blankJob(settings, prices) {
   return {
     // Starts empty: add products, or load a template for a one-off job.
-    title: '', mats: [], labour: [], extras: [], products: [],
+    title: '', category: null, mats: [], labour: [], extras: [], products: [],
     customer: '', phone: '', email: '', notes: '', units: 1, galv: false,
     markup: settings.markup, status: 'Draft', request_id: null, rates: ratesFrom(settings),
   }
@@ -24,6 +26,15 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const [catalogue, setCatalogue] = useState([])
   const settingsRates = ratesFrom(settings)
   const [adding, setAdding] = useState(null) // { id, qty, chosen: [] }
+  const [customers, setCustomers] = useState([]) // past customers, newest first, for the Customer list
+  const [costOpen, setCostOpen] = useState(null) // null = open only when the quote has no products
+  useEffect(() => {
+    supabase.from('jobs').select('customer,phone,email').order('created_at', { ascending: false }).limit(1000).then(({ data }) => {
+      const seen = new Map()
+      for (const c of data || []) { const k = (c.customer || '').trim().toLowerCase(); if (k && !seen.has(k)) seen.set(k, c) }
+      setCustomers([...seen.values()])
+    })
+  }, [])
   useEffect(() => { supabase.from('products').select('*').eq('active', true).order('category').order('name').then(({ data }) => setCatalogue(data || [])) }, [])
   const active = prices.filter((p) => p.active)
   const [job, setJob] = useState(() => target?.jobId ? null : (target?.draft || blankJob(settings, active)))
@@ -50,6 +61,12 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   // Prices or rates differ from what this quote was costed at?
   const stale = job.mats.some((m) => priceById[m.id] && n(priceById[m.id].cost) !== n(m.cost)) ||
     Object.entries(ratesFrom(settings)).some(([k, v]) => n(r[k]) !== v)
+
+  // Picking a past customer fills in their cell and email (only where still empty).
+  function pickCustomer(name) {
+    const c = customers.find((x) => x.customer.trim().toLowerCase() === name.trim().toLowerCase())
+    upd(c ? { customer: name, phone: job.phone || c.phone || '', email: job.email || c.email || '' } : { customer: name })
+  }
 
   function refreshPrices() {
     setJob((j) => ({
@@ -101,14 +118,10 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   return (
     <>
       <div className="pagehead">
-        <div><h1>Job costing</h1><p>{job.quote_no || 'New quote, not saved yet'}{job.invoice_no && ` · Invoice ${job.invoice_no}`}
+        <div><h1>Quote</h1><p>{job.quote_no || 'New quote, not saved yet'}{job.invoice_no && ` · Invoice ${job.invoice_no}`}
           {job.source_pdf_path && <> · <button className="linkbtn" type="button" onClick={async () => { const { data } = await supabase.storage.from('job-docs').createSignedUrl(job.source_pdf_path, 300); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }}>Original PDF quote</button></>}</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <select aria-label="Load a template" value="" onChange={(e) => { if (e.target.value) { upd(fromTemplate(e.target.value, active)); toast('Template loaded') } }}>
-            <option value="">Load a template…</option>
-            {Object.entries(TEMPLATES).map(([k, v]) => <option key={k} value={k}>{v.title}</option>)}
-          </select>
-          <button className="btn small" type="button" onClick={() => go('cost', null)}>New costing</button>
+          <button className="btn small" type="button" onClick={() => go('cost', null)}>New quote</button>
         </div>
       </div>
 
@@ -124,11 +137,15 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
       <div className="cost-layout">
         <div>
           <div className="card block"><div className="fgrid">
-            <div className="field"><label htmlFor="c-cust">Customer</label><input id="c-cust" value={job.customer} onChange={(e) => upd({ customer: e.target.value })} /></div>
+            <div className="field"><label htmlFor="c-cust">Customer</label><input id="c-cust" list="c-cust-list" autoComplete="off" value={job.customer} onChange={(e) => pickCustomer(e.target.value)} placeholder="Type to pick a past customer" />
+              <datalist id="c-cust-list">{customers.map((c) => <option key={c.customer} value={c.customer}>{c.phone || ''}</option>)}</datalist></div>
             <div className="field"><label htmlFor="c-phone">Cell</label><input id="c-phone" value={job.phone || ''} onChange={(e) => upd({ phone: e.target.value })} /></div>
             <div className="field full"><label htmlFor="c-email">Customer email</label><input id="c-email" type="email" value={job.email || ''} onChange={(e) => upd({ email: e.target.value })} placeholder="For emailing the quote and invoice" /></div>
             <div className="field full"><label htmlFor="c-title">Job description (shown on quote)</label><input id="c-title" value={job.title} onChange={(e) => upd({ title: e.target.value })} /></div>
-            <div className="field"><label htmlFor="c-units">Number of identical units</label><input id="c-units" type="number" min="1" step="1" value={job.units} onChange={(e) => upd({ units: e.target.value })} /></div>
+            <div className="field"><label htmlFor="c-cat">Type</label>
+              <select id="c-cat" value={job.category || ''} onChange={(e) => upd({ category: e.target.value || null })}>
+                <option value="">Choose…</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
+              <span className="hint">For the monthly profit report</span></div>
             <div className="field"><label htmlFor="c-status">Stage</label>
               <select id="c-status" value={job.status} onChange={(e) => upd({ status: e.target.value })}>{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
               <span className="hint">Received or later shows the job under Orders</span></div>
@@ -139,14 +156,11 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                 ? <span>{job.invoice_voided_at ? 'Invoice void' : `${job.payment_status} · paid ${money0(job.amount_paid || 0)} of ${money0(job.invoice_total || 0)}`}
                     {' '}<button className="linkbtn" type="button" onClick={() => go('invoices', { jobId: job.id })}>Payments</button></span>
                 : <span className="hint">Payments start once the quote is accepted (stage Received) and becomes an invoice.</span>}</div>
-            <div className="field"><label htmlFor="c-markup">Markup on cost (%)</label><input id="c-markup" type="number" step="0.5" value={job.markup} onChange={(e) => upd({ markup: e.target.value })} /></div>
-            <div className="field" style={{ justifyContent: 'flex-end' }}>
-              <label className="check" htmlFor="c-galv"><input id="c-galv" type="checkbox" checked={job.galv} onChange={(e) => upd({ galv: e.target.checked })} /> Hot-dip galvanise (R{r.galv}/kg)</label></div>
             <div className="field full"><label htmlFor="c-notes">Notes (internal)</label><textarea id="c-notes" style={{ minHeight: 70 }} value={job.notes || ''} onChange={(e) => upd({ notes: e.target.value })} /></div>
           </div></div>
 
           <div className="block">
-            <div className="block-head"><h3>Products</h3>
+            <div className="block-head"><h3>On the quote</h3>
               {!adding && <button className="btn small primary" type="button" disabled={!catalogue.length} onClick={() => setAdding({ id: catalogue[0]?.id, qty: 1, chosen: [] })}>Add product</button>}</div>
             {!catalogue.length && <p className="hint" style={{ marginTop: 0 }}>No products set up yet. Set them up under Products (e.g. "2 m³ skip"), then add them here in one click.</p>}
             {adding && (() => {
@@ -160,7 +174,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                   {(prod?.options || []).map((o) => (
                     <label key={o.name} className="check"><input type="checkbox" checked={adding.chosen.includes(o.name)} onChange={(e) => setAdding({ ...adding, chosen: e.target.checked ? [...adding.chosen, o.name] : adding.chosen.filter((c) => c !== o.name) })} /> {o.name} (+{money0(o.price_incl)})</label>
                   ))}
-                  <button className="btn small primary" type="button" disabled={!prod} onClick={() => { addRow('products', productLine(prod, prices, settingsRates, adding.chosen, Math.max(1, n(adding.qty)))); if (!job.title) upd({ title: prod.name }); setAdding(null) }}>Add</button>
+                  <button className="btn small primary" type="button" disabled={!prod} onClick={() => { addRow('products', productLine(prod, prices, settingsRates, adding.chosen, Math.max(1, n(adding.qty)))); upd({ ...(job.title ? {} : { title: prod.name }), ...(job.category ? {} : { category: prod.category }) }); setAdding(null) }}>Add</button>
                   <button className="btn small ghost" type="button" onClick={() => setAdding(null)}>Cancel</button>
                 </div>)
             })()}
@@ -177,7 +191,22 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                 </tr>))}</tbody>
             </table></div>}
             {(job.products || []).length > 0 && <p className="hint">The customer sees one line per product. You can change the price for this quote; the product's own price stays the same.</p>}
+            {!(job.products || []).length && <p className="hint">Add the finished items (e.g. 1 × 2 m³ skip). For a one-off job, cost it part by part under Costing below.</p>}
           </div>
+
+          <details className="costing" open={costOpen ?? !(job.products || []).length} onToggle={(e) => setCostOpen(e.currentTarget.open)}>
+            <summary><h3 style={{ display: 'inline' }}>Costing</h3> <span className="hint">· staff only: one-off parts, labour and extras{t.costedExcl > 0 ? ` · ${money0(t.costedExcl * (1 + r.vat / 100))} incl. VAT` : ''}</span></summary>
+          <div className="card block"><div className="fgrid">
+            <div className="field full"><label htmlFor="c-tpl">Start from a template</label>
+              <select id="c-tpl" value="" onChange={(e) => { if (e.target.value) { const tp = fromTemplate(e.target.value, active); upd({ mats: tp.mats, labour: tp.labour, extras: tp.extras, ...(job.title ? {} : { title: tp.title }) }); toast('Template loaded') } }}>
+                <option value="">Load a template…</option>
+                {Object.entries(TEMPLATES).map(([k, v]) => <option key={k} value={k}>{v.title}</option>)}
+              </select></div>
+            <div className="field"><label htmlFor="c-units">Number of identical units</label><input id="c-units" type="number" min="1" step="1" value={job.units} onChange={(e) => upd({ units: e.target.value })} /></div>
+            <div className="field"><label htmlFor="c-markup">Markup on cost (%)</label><input id="c-markup" type="number" step="0.5" value={job.markup} onChange={(e) => upd({ markup: e.target.value })} /></div>
+            <div className="field" style={{ justifyContent: 'flex-end' }}>
+              <label className="check" htmlFor="c-galv"><input id="c-galv" type="checkbox" checked={job.galv} onChange={(e) => upd({ galv: e.target.checked })} /> Hot-dip galvanise (R{r.galv}/kg)</label></div>
+          </div></div>
 
           <div className="block">
             <div className="block-head"><h3>Parts &amp; materials</h3>
@@ -252,6 +281,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
               </tbody>
             </table></div>
           </div>
+          </details>
         </div>
 
         <aside className="sheet">

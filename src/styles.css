@@ -324,3 +324,5 @@ label.btn input[type=file]{display:none}
 
 /* Parts supplied by the client */
 tr.client-part td{background:rgba(111,168,232,.07)}
+.costing{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.costing > summary{cursor:pointer;padding:6px 0 12px;list-style-position:outside}

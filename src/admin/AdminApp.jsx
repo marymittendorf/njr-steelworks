@@ -42,7 +42,7 @@ const PAGES = [
   ['deliveries', 'Deliveries'],
   ['products', 'Products'],
   ['stock', 'Stock'],
-  ['cost', 'Job costing'],
+  ['cost', 'New quote'],
   ['expenses', 'Expenses'],
   ['petty', 'Petty cash'],
   ['gallery', 'Website photos'],
