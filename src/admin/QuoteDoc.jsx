@@ -56,14 +56,16 @@ export default function QuoteDoc({ job, settings, onClose, onSent }) {
           <span>VAT {r.vat}%</span><span>{money(t.vat)}</span>
           <span className="grand">Total</span><span className="grand">{money(t.total)}</span>
           {!isInvoice && <><span className="muted">Deposit {r.deposit}% to book</span><span className="muted">{money(t.deposit)}</span></>}
-          {isInvoice && job.payment_status === 'Awaiting deposit' && <><span><b>Deposit due now ({r.deposit}%)</b></span><span><b>{money(t.deposit)}</b></span></>}
-          {isInvoice && job.payment_status === 'Deposit paid' && <><span className="muted">Deposit received</span><span className="muted">−{money(t.deposit)}</span><span><b>Balance due</b></span><span><b>{money(t.total - t.deposit)}</b></span></>}
-          {isInvoice && job.payment_status === 'Paid' && <><span><b>Paid in full</b></span><span><b>{money(0)} due</b></span></>}
+          {isInvoice && Number(job.amount_paid) > 0 && <><span className="muted">Paid to date</span><span className="muted">−{money(job.amount_paid)}</span></>}
+          {isInvoice && !job.invoice_voided_at && (Number(job.amount_paid) > 0
+            ? <><span><b>Balance due</b></span><span><b>{money(Math.max(0, t.total - Number(job.amount_paid)))}</b></span></>
+            : <><span><b>Deposit due now ({r.deposit}%)</b></span><span><b>{money(t.deposit)}</b></span></>)}
+          {isInvoice && job.invoice_voided_at && <><span><b>VOID</b></span><span><b>{money(0)}</b></span></>}
         </div>
         <div className="terms">
           <b>Terms. </b>
           {isInvoice
-            ? (job.payment_status === 'Paid' ? 'Thank you, this invoice is paid in full.' : `A ${r.deposit}% deposit is due before work starts; the balance is due on collection or delivery.`)
+            ? (Number(job.amount_paid) >= t.total - 0.5 ? 'Thank you, this invoice is paid in full.' : `A ${r.deposit}% deposit is due before work starts; the balance is due on collection or delivery.`)
             : `Quote valid for ${r.validity} days. Steel prices can change after that. Work is booked once the ${r.deposit}% deposit reflects; the balance is paid on collection.`}
           {settings.bank_details && `\n\nBanking details:\n${settings.bank_details}\nReference: ${isInvoice ? job.invoice_no : job.quote_no}`}
         </div>

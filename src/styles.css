@@ -312,3 +312,6 @@ input[type=range]{padding:0;accent-color:var(--accent)}
 .receipt-photos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px}
 .receipt-photos figcaption{font-size:.75rem}
 label.btn input[type=file]{display:none}
+
+/* Invoices & payments */
+.pay-form{border:1px dashed var(--accent);border-radius:8px;padding:14px;background:rgba(244,122,31,.05)}

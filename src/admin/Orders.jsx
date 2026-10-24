@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, fromTemplate, ratesFrom } from '../costing.js'
-import { ORDER_STAGES, PAYMENT_STATUSES, isStockBuild, moveJob, nextStep, shortStamp } from '../orders.js'
+import { ORDER_STAGES, isStockBuild, moveJob, nextStep, shortStamp } from '../orders.js'
+import { balanceOf, invoiceState } from './Invoices.jsx'
 import { money } from '../format.js'
 import { Pill, Loading, ErrorNote } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
@@ -50,11 +51,6 @@ export default function Orders({ settings, prices, go, toast, me }) {
       toast(isStockBuild(job) && status === 'Ready' ? `${job.title} moved to stock` : `${job.quote_no}: ${label.toLowerCase()}`)
       if (isStockBuild(job) && status === 'Ready') load()
     } catch (e) { setError(e) } finally { setBusy(null) }
-  }
-
-  async function setPayment(job, payment_status) {
-    const { data, error } = await supabase.from('jobs').update({ payment_status }).eq('id', job.id).select().single()
-    if (error) setError(error); else setJobs((list) => list.map((j) => (j.id === job.id ? data : j)))
   }
 
   function newStockBuild() {
@@ -130,9 +126,8 @@ export default function Orders({ settings, prices, go, toast, me }) {
                   </td>
                   <td>
                     {stock ? <span className="hint">—</span> : (
-                      <select aria-label={`Payment for ${j.quote_no}`} value={j.payment_status} onChange={(e) => setPayment(j, e.target.value)} style={{ width: 'auto' }}>
-                        {PAYMENT_STATUSES.map((p) => <option key={p}>{p}</option>)}
-                      </select>
+                      <button className="linkbtn" type="button" onClick={() => go('invoices', { jobId: j.id })} title="Open the invoice to record a payment">
+                        {invoiceState(j)}{j.invoice_total ? ` · ${money(balanceOf(j))} owing` : ''}</button>
                     )}
                   </td>
                   <td className="hint num" style={{ fontSize: '.85rem', whiteSpace: 'nowrap' }}>

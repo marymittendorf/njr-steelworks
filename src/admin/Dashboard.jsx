@@ -27,7 +27,7 @@ export default function Dashboard({ go }) {
   const sum = (a) => a.reduce((s, x) => s + x.t.total, 0)
   const awaiting = rows.filter((x) => x.j.status === 'Quote sent')
   const onHand = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready'].includes(x.j.status))
-  const owed = rows.filter((x) => x.j.invoice_no && x.j.payment_status !== 'Paid')
+  const owed = rows.filter((x) => x.j.invoice_no && !x.j.invoice_voided_at && Number(x.j.invoice_total) - Number(x.j.amount_paid) > 0.5)
   const won = rows.filter((x) => x.j.job_type !== 'Built for stock' && ['Received', 'In production', 'Ready', 'Delivered'].includes(x.j.status))
   const avgMargin = won.length ? won.reduce((a, x) => a + x.t.margin, 0) / won.length : 0
   const agg = won.reduce((a, { t }) => ({
@@ -46,7 +46,7 @@ export default function Dashboard({ go }) {
           <span className="label">New requests</span><b className="num">{newReq}</b><span className="sub">From the website form</span></button>
         <div className="kpi"><span className="label">Quotes awaiting reply</span><b className="num">{awaiting.length}</b><span className="sub num">{money0(sum(awaiting))}</span></div>
         <button type="button" className="kpi kpi-btn" onClick={() => go('orders')}><span className="label">Work on hand</span><b className="num">{onHand.length}</b><span className="sub num">{money0(sum(onHand))}</span></button>
-        <div className="kpi"><span className="label">Invoiced, unpaid</span><b className="num">{owed.length}</b><span className="sub num">{money0(sum(owed))}</span></div>
+        <button type="button" className="kpi kpi-btn" onClick={() => go('invoices')}><span className="label">Invoiced, unpaid</span><b className="num">{owed.length}</b><span className="sub num">{money0(owed.reduce((a, x) => a + Number(x.j.invoice_total) - Number(x.j.amount_paid), 0))} owing</span></button>
       </div>
       {tot > 0 && (
         <div className="card block">

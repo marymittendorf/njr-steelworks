@@ -5,9 +5,9 @@ import { money, money0 } from '../format.js'
 import { Loading, ErrorNote } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
-import { JOB_TYPES, PAYMENT_STATUSES, ensureStockItem, stampsFor } from '../orders.js'
+import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../orders.js'
 
-const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'payment_status', 'notes', 'request_id', 'mats', 'labour', 'extras', 'rates']
+const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'notes', 'request_id', 'mats', 'labour', 'extras', 'rates']
 
 function blankJob(settings, prices) {
   return {
@@ -73,6 +73,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     if (res.error) { setError(res.error); return null }
     if (!job.id && job.request_id) await supabase.from('requests').update({ status: 'Quoted' }).eq('id', job.request_id)
     await ensureStockItem(res.data)
+    res.data = await syncInvoiceTotals(res.data)
     setJob(res.data)
     toast(!job.invoice_no && res.data.invoice_no ? `Received: invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
     return res.data
@@ -127,8 +128,11 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
               <span className="hint">Received or later shows the job under Orders</span></div>
             <div className="field"><label htmlFor="c-type">Job type</label>
               <select id="c-type" value={job.job_type || 'Customer job'} onChange={(e) => upd({ job_type: e.target.value })}>{JOB_TYPES.map((s) => <option key={s}>{s}</option>)}</select></div>
-            <div className="field"><label htmlFor="c-pay">Payment</label>
-              <select id="c-pay" value={job.payment_status || 'Awaiting deposit'} onChange={(e) => upd({ payment_status: e.target.value })}>{PAYMENT_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
+            <div className="field"><span className="flabel">Payment</span>
+              {job.invoice_no
+                ? <span>{job.invoice_voided_at ? 'Invoice void' : `${job.payment_status} · paid ${money0(job.amount_paid || 0)} of ${money0(job.invoice_total || 0)}`}
+                    {' '}<button className="linkbtn" type="button" onClick={() => go('invoices', { jobId: job.id })}>Payments</button></span>
+                : <span className="hint">Payments start once the quote is accepted (stage Received) and becomes an invoice.</span>}</div>
             <div className="field"><label htmlFor="c-markup">Markup on cost (%)</label><input id="c-markup" type="number" step="0.5" value={job.markup} onChange={(e) => upd({ markup: e.target.value })} /></div>
             <div className="field" style={{ justifyContent: 'flex-end' }}>
               <label className="check" htmlFor="c-galv"><input id="c-galv" type="checkbox" checked={job.galv} onChange={(e) => upd({ galv: e.target.checked })} /> Hot-dip galvanise (R{r.galv}/kg)</label></div>

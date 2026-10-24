@@ -3,7 +3,7 @@ import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { readDocument } from '../docReader.js'
 import { parseQuote } from '../docParse.js'
-import { PAYMENT_STATUSES, stampsFor } from '../orders.js'
+import { stampsFor, syncInvoiceTotals } from '../orders.js'
 import { money } from '../format.js'
 import { ErrorNote } from './ui.jsx'
 
@@ -62,7 +62,7 @@ export default function ImportQuote({ settings, onClose, onCreated }) {
         customer: f.customer.trim(), phone: f.phone.trim() || null,
         title: items.length === 1 ? items[0].desc.trim() : `${items[0].desc.trim()} and ${items.length - 1} more`,
         quote_date: f.date, units: 1, galv: false, markup: 0,
-        status: f.status, job_type: 'Customer job', payment_status: f.payment_status,
+        status: f.status, job_type: 'Customer job',
         notes: `Imported from PDF quote${f.number ? ` ${f.number}` : ''}.`,
         mats: [], labour: [], extras: items.map((i) => ({ desc: i.desc.trim(), amount: Math.round(n(i.amount) * 100) / 100 })),
         // Imported prices are final: no overhead or markup added on top.
@@ -72,7 +72,7 @@ export default function ImportQuote({ settings, onClose, onCreated }) {
       }
       const { data, error } = await supabase.from('jobs').insert(job).select().single()
       if (error) throw error
-      onCreated(data)
+      onCreated(await syncInvoiceTotals(data))
     } catch (err) { setError(err.message || String(err)) } finally { setBusy(false) }
   }
 
@@ -124,8 +124,6 @@ export default function ImportQuote({ settings, onClose, onCreated }) {
             <div className="fgrid" style={{ marginTop: 12 }}>
               <div className="field"><label htmlFor="iq-stage">Stage</label>
                 <select id="iq-stage" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}><option>Received</option><option>In production</option><option>Ready</option></select></div>
-              <div className="field"><label htmlFor="iq-pay">Payment</label>
-                <select id="iq-pay" value={f.payment_status} onChange={(e) => setF({ ...f, payment_status: e.target.value })}>{PAYMENT_STATUSES.map((p) => <option key={p}>{p}</option>)}</select></div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button className="btn primary" type="button" disabled={busy} onClick={create}>{busy ? 'Creating…' : 'Create order and invoice'}</button>
