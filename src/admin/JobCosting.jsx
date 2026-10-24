@@ -11,7 +11,7 @@ import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../ord
 
 export const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
 
-const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'category', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
+const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'customer_company', 'customer_address', 'customer_vat', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'category', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
 
 export function blankJob(settings) {
   return {
@@ -32,7 +32,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const [newProduct, setNewProduct] = useState(null) // product being set up from this quote
   const [customers, setCustomers] = useState([]) // past customers, newest first, for the Customer list
   useEffect(() => {
-    supabase.from('jobs').select('customer,phone,email').order('created_at', { ascending: false }).limit(1000).then(({ data }) => {
+    supabase.from('jobs').select('customer,phone,email,customer_company,customer_address,customer_vat').order('created_at', { ascending: false }).limit(1000).then(({ data }) => {
       const seen = new Map()
       for (const c of data || []) { const k = (c.customer || '').trim().toLowerCase(); if (k && !seen.has(k)) seen.set(k, c) }
       setCustomers([...seen.values()])
@@ -65,7 +65,10 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   // Picking a past customer fills in their cell and email (only where still empty).
   function pickCustomer(name) {
     const c = customers.find((x) => x.customer.trim().toLowerCase() === name.trim().toLowerCase())
-    upd(c ? { customer: name, phone: job.phone || c.phone || '', email: job.email || c.email || '' } : { customer: name })
+    upd(c ? {
+      customer: name, phone: job.phone || c.phone || '', email: job.email || c.email || '',
+      customer_company: job.customer_company || c.customer_company || '', customer_address: job.customer_address || c.customer_address || '', customer_vat: job.customer_vat || c.customer_vat || '',
+    } : { customer: name })
   }
 
   // Older quotes were costed part by part: turn that into one line at the same price.
@@ -82,6 +85,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     setBusy(true); setError(null)
     const payload = Object.fromEntries(JOB_FIELDS.filter((k) => k in job).map((k) => [k, job[k]]))
     payload.title = title
+    for (const k of ['customer_company', 'customer_address', 'customer_vat']) payload[k] = String(payload[k] || '').trim() || null
     payload.units = Math.max(1, Math.round(n(payload.units)) || 1)
     payload.markup = n(payload.markup)
     payload.mats = (payload.mats || []).map((m) => ({ ...m, qty: n(m.qty), cost: n(m.cost) }))
@@ -129,6 +133,9 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
             <div className="field"><label htmlFor="c-cust">Customer</label><input id="c-cust" list="c-cust-list" autoComplete="off" value={job.customer} onChange={(e) => pickCustomer(e.target.value)} placeholder="Type to pick a past customer" />
               <datalist id="c-cust-list">{customers.map((c) => <option key={c.customer} value={c.customer}>{c.phone || ''}</option>)}</datalist></div>
             <div className="field"><label htmlFor="c-phone">Cell</label><input id="c-phone" value={job.phone || ''} onChange={(e) => upd({ phone: e.target.value })} /></div>
+            <div className="field"><label htmlFor="c-company">Company (optional)</label><input id="c-company" value={job.customer_company || ''} onChange={(e) => upd({ customer_company: e.target.value })} /></div>
+            <div className="field"><label htmlFor="c-vat">Customer VAT number (optional)</label><input id="c-vat" value={job.customer_vat || ''} onChange={(e) => upd({ customer_vat: e.target.value })} /></div>
+            <div className="field full"><label htmlFor="c-addr">Address (optional)</label><textarea id="c-addr" style={{ minHeight: 56 }} value={job.customer_address || ''} onChange={(e) => upd({ customer_address: e.target.value })} /></div>
             <div className="field full"><label htmlFor="c-email">Customer email</label><input id="c-email" type="email" value={job.email || ''} onChange={(e) => upd({ email: e.target.value })} placeholder="For emailing the quote and invoice" /></div>
             <div className="field full"><label htmlFor="c-title">Job description (heading on the quote)</label><input id="c-title" value={job.title} onChange={(e) => upd({ title: e.target.value })} placeholder="Filled in from the first line if left empty" /></div>
             <div className="field"><label htmlFor="c-cat">Type</label>

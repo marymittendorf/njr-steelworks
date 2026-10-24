@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, customerLines, n } from '../costing.js'
 import { addDays, money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps } from './ui.jsx'
+import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps, BillTo } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 
 export const today = () => new Date().toISOString().slice(0, 10)
@@ -174,7 +174,7 @@ function InvoiceView({ job, jobs, settings, me, toast, go, onBack, onChanged }) 
           <div style={{ textAlign: 'right' }}><b style={{ fontFamily: 'var(--f-display)', fontSize: '1.5rem' }}>TAX INVOICE</b>
             <div className="hint num">{job.invoice_date && shortDate(job.invoice_date)}{dueDate(job, settings) && ` · due ${n(settings.payment_terms) ? shortDate(dueDate(job, settings)) : 'on receipt'}`}</div></div>
         </div>
-        <p style={{ margin: '0 0 12px' }}><span className="hint">Bill to</span><br /><b>{job.customer}</b>{job.phone && <><br />{job.phone}</>}{job.email && <><br />{job.email}</>}</p>
+        <BillTo who={job} label="Bill to" mutedClass="hint" />
         <table>
           <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
           <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
@@ -296,7 +296,7 @@ export function Statement({ customer, jobs, settings, onClose }) {
           </div>
           <div style={{ textAlign: 'right' }}><h2>Statement</h2><div className="muted">{shortDate(today())}</div></div>
         </div>
-        <p style={{ margin: '16px 0' }}><span className="muted">For</span><br /><b>{customer.customer}</b>{customer.phone && <><br />{customer.phone}</>}{customer.email && <><br />{customer.email}</>}</p>
+        <BillTo who={customer} />
         <div className="tbl-wrap"><table>
           <thead><tr><th>Date</th><th>Details</th><th className="r">Charged</th><th className="r">Paid</th><th className="r">Balance</th></tr></thead>
           <tbody>{rows.map((r, i) => <tr key={i}><td className="num">{shortDate(r.date)}</td><td>{r.what}</td><td className="r num">{r.debit ? money(r.debit) : ''}</td><td className="r num">{r.credit ? money(r.credit) : ''}</td><td className="r num">{money(r.balance)}</td></tr>)}</tbody>

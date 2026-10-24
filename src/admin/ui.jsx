@@ -103,3 +103,17 @@ export function Picker({ items, value, onChange, autoFocus, label = 'Part', sear
     </div>
   )
 }
+
+// Who a quote, invoice or statement is for: company, contact, address, VAT number, cell, email.
+export function BillTo({ who, label = 'For', mutedClass = 'muted' }) {
+  return (
+    <p style={{ margin: '16px 0', whiteSpace: 'pre-line' }}>
+      <span className={mutedClass}>{label}</span><br />
+      {who.customer_company ? <><b>{who.customer_company}</b><br />{who.customer}</> : <b>{who.customer}</b>}
+      {who.customer_address && <><br />{who.customer_address}</>}
+      {who.customer_vat && <><br />VAT no. {who.customer_vat}</>}
+      {who.phone && <><br />{who.phone}</>}
+      {who.email && <><br />{who.email}</>}
+    </p>
+  )
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, clientParts, customerLines } from '../costing.js'
 import { addDays, money, shortDate } from '../format.js'
+import { BillTo } from './ui.jsx'
 
 // email: open with the Email panel already showing (the Email button on quotes and invoices).
 export default function QuoteDoc({ job, settings, onClose, onSent, email = false }) {
@@ -47,7 +48,7 @@ export default function QuoteDoc({ job, settings, onClose, onSent, email = false
             {!isInvoice && <div className="muted">Valid until {shortDate(addDays(job.quote_date, r.validity))}</div>}
           </div>
         </div>
-        <p style={{ margin: '16px 0' }}><span className="muted">For</span><br /><b>{job.customer}</b><br />{job.phone}{job.email && <><br />{job.email}</>}</p>
+        <BillTo who={job} />
         <div className="tbl-wrap"><table>
           <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
           <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>

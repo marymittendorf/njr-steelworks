@@ -16,10 +16,11 @@ function groupCustomers(jobs) {
   for (const j of jobs) {
     if (j.job_type === 'Built for stock' || !keyOf(j.customer)) continue
     const k = keyOf(j.customer)
-    const c = map.get(k) || { key: k, customer: j.customer.trim(), phone: '', email: '', jobs: [], invoiced: 0, paid: 0, owing: 0, last: '' }
+    const c = map.get(k) || { key: k, customer: j.customer.trim(), phone: '', email: '', customer_company: '', customer_address: '', customer_vat: '', jobs: [], invoiced: 0, paid: 0, owing: 0, last: '' }
     c.jobs.push(j)
     if (!c.phone && j.phone) c.phone = j.phone
     if (!c.email && j.email) c.email = j.email
+    for (const f of ['customer_company', 'customer_address', 'customer_vat']) if (!c[f] && j[f]) c[f] = j[f]
     if (j.invoice_no && !j.invoice_voided_at) { c.invoiced += n(j.invoice_total); c.paid += n(j.amount_paid); c.owing += balanceOf(j) }
     const d = j.invoice_date || j.quote_date || ''
     if (d > c.last) c.last = d
@@ -93,7 +94,11 @@ function CustomerView({ c, settings, go, toast, onBack, onSaved }) {
     if (!name) { setError('The customer needs a name.'); return }
     setBusy(true); setError(null)
     const { error } = await supabase.from('jobs')
-      .update({ customer: name, phone: edit.phone.trim() || null, email: edit.email.trim() || null, updated_at: new Date().toISOString() })
+      .update({
+        customer: name, phone: edit.phone.trim() || null, email: edit.email.trim() || null,
+        customer_company: edit.customer_company.trim() || null, customer_address: edit.customer_address.trim() || null, customer_vat: edit.customer_vat.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
       .in('id', c.jobs.map((j) => j.id))
     setBusy(false)
     if (error) { setError(error); return }
@@ -104,7 +109,7 @@ function CustomerView({ c, settings, go, toast, onBack, onSaved }) {
     supabase.from('payments').select('*').in('job_id', ids).order('paid_on', { ascending: false }).then(({ data }) => setPayments(data || []))
   }, [c.key])
   const byId = Object.fromEntries(c.jobs.map((j) => [j.id, j]))
-  const newQuote = () => go('cost', { draft: { ...blankJob(settings), customer: c.customer, phone: c.phone, email: c.email } })
+  const newQuote = () => go('cost', { draft: { ...blankJob(settings), customer: c.customer, phone: c.phone, email: c.email, customer_company: c.customer_company, customer_address: c.customer_address, customer_vat: c.customer_vat } })
 
   return (
     <>
@@ -112,12 +117,15 @@ function CustomerView({ c, settings, go, toast, onBack, onSaved }) {
         <h1><button className="btn small" type="button" aria-label="Back to customers" onClick={onBack}>←</button>{c.customer}</h1>
         <div className="rec-acts">
           {c.phone && <a className="btn" href={`https://wa.me/${waNumber(c.phone)}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
-          <button className="btn" type="button" onClick={() => setEdit({ customer: c.customer, phone: c.phone || '', email: c.email || '' })}>Edit</button>
+          <button className="btn" type="button" onClick={() => setEdit({ customer: c.customer, phone: c.phone || '', email: c.email || '', customer_company: c.customer_company || '', customer_address: c.customer_address || '', customer_vat: c.customer_vat || '' })}>Edit</button>
           <button className="btn" type="button" onClick={() => setStatement(true)}>Statement</button>
           <button className="btn primary" type="button" onClick={newQuote}>+ New quote</button>
         </div>
       </div>
       <div className="rec-meta">
+        {c.customer_company && <b style={{ color: 'var(--fg)' }}>{c.customer_company}</b>}
+        {c.customer_vat && <span>VAT no. {c.customer_vat}</span>}
+        {c.customer_address && <span>{c.customer_address.replace(/\n+/g, ', ')}</span>}
         {c.phone && <a className="num" href={`tel:${c.phone.replace(/\s/g, '')}`}>{c.phone}</a>}
         {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
       </div>
@@ -126,6 +134,9 @@ function CustomerView({ c, settings, go, toast, onBack, onSaved }) {
           <div className="fgrid">
             <div className="field"><label htmlFor="cu-name">Name</label><input id="cu-name" value={edit.customer} onChange={(e) => setEdit({ ...edit, customer: e.target.value })} autoFocus /></div>
             <div className="field"><label htmlFor="cu-cell">Cell</label><input id="cu-cell" inputMode="tel" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></div>
+            <div className="field"><label htmlFor="cu-company">Company</label><input id="cu-company" value={edit.customer_company} onChange={(e) => setEdit({ ...edit, customer_company: e.target.value })} /></div>
+            <div className="field"><label htmlFor="cu-vat">VAT number</label><input id="cu-vat" value={edit.customer_vat} onChange={(e) => setEdit({ ...edit, customer_vat: e.target.value })} /></div>
+            <div className="field full"><label htmlFor="cu-addr">Address</label><textarea id="cu-addr" style={{ minHeight: 70 }} value={edit.customer_address} onChange={(e) => setEdit({ ...edit, customer_address: e.target.value })} placeholder={'Street\nTown\nPostal code'} /></div>
             <div className="field full"><label htmlFor="cu-email">Email</label><input id="cu-email" type="email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} placeholder="For emailing quotes and invoices" /></div>
           </div>
           <ErrorNote error={error} />
