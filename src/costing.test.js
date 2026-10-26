@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc, partLine } from './costing.js'
+import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc, partLine, suggestedSplit } from './costing.js'
 
 const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 20, validity: 14, deposit: 50 }
 
@@ -131,4 +131,18 @@ test('a part sold on a quote: cost + markup + VAT, and the part goes with it', (
   assert.equal(l.cost_excl, 230)
   assert.equal(l.qty, 4)
   assert.equal(l.parts[0].id, 'wk004')
+})
+
+test('two markups: parts and materials vs labour', () => {
+  const prices = [{ id: 'a', name: 'A', unit: 'each', cost: 100 }]
+  const recipe = { mats: [{ id: 'a', qty: 3 }], labour: [{ task: 'Weld', hours: 2 }], extras: [] }
+  const pc = productCost(recipe, prices, rates)
+  // parts 300 × 1.1 overhead = 330; labour 2h × 350 = 700 × 1.1 = 770
+  assert.equal(Math.round(pc.partsCost), 330)
+  assert.equal(Math.round(pc.labourCost), 770)
+  // parts +50%, labour +0%: (495 + 770) × 1.15 = 1454.75 → R1 460
+  assert.equal(suggestedSplit(pc, { parts: 50, labour: 0 }, 15), 1460)
+  const line = workedLine({ ...recipe, markup_parts: 50, markup_labour: 0 }, prices, rates, ownLine('Repair'))
+  assert.equal(line.price_incl, 1460)
+  assert.equal(line.worked.markup_labour, 0)
 })

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { n, productCost, suggestedPrice, marginAt, ratesFrom } from '../costing.js'
+import { n, productCost, suggestedSplit, marginAt, markupsFrom, ratesFrom } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote, PartPicker, SearchBox, matches } from './ui.jsx'
 import PartsPickList from './PartsPickList.jsx'
@@ -48,7 +48,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
           <thead><tr><th>Product</th><th className="r">Costs you</th><th className="r">Suggested</th><th className="r">Your price</th><th className="r">Margin</th><th>Website</th></tr></thead>
           <tbody>{list.filter((p) => matches(q, p.name, p.category, p.spec)).map((p) => {
             const pc = productCost(p, prices, rates)
-            const sug = suggestedPrice(pc.cost, p.markup ?? settings.markup, rates.vat)
+            const sug = suggestedSplit(pc, { parts: p.markup_parts ?? markupsFrom(settings).parts, labour: p.markup_labour ?? markupsFrom(settings).labour }, rates.vat)
             const m = marginAt(p.price_incl, pc.cost, rates.vat)
             return (
               <tr key={p.id} className="clickable" tabIndex={0} onClick={() => setEdit({ ...p, price_incl: p.price_incl ?? '' })} onKeyDown={(e) => e.key === 'Enter' && setEdit(p)} style={{ opacity: p.active ? 1 : 0.5 }}>
@@ -79,8 +79,10 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
   const [picking, setPicking] = useState(false)
   const active = prices.filter((x) => x.active)
   const pc = productCost(p, prices, rates)
-  const markup = p.markup === '' || p.markup == null ? n(settings.markup) : n(p.markup)
-  const sug = suggestedPrice(pc.cost, markup, rates.vat)
+  const def = markupsFrom(settings)
+  const pick = (v, d) => (v === '' || v == null ? d : n(v))
+  const markups = { parts: pick(p.markup_parts, def.parts), labour: pick(p.markup_labour, def.labour) }
+  const sug = suggestedSplit(pc, markups, rates.vat)
   const m = marginAt(p.price_incl, pc.cost, rates.vat)
   const setRow = (list, i, patch) => setP({ ...p, [list]: p[list].map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   const delRow = (list, i) => setP({ ...p, [list]: p[list].filter((_, k) => k !== i) })
@@ -93,7 +95,7 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
       mats: p.mats.filter((x) => x.id && n(x.qty) > 0).map((x) => ({ id: x.id, qty: n(x.qty) })),
       labour: p.labour.filter((x) => x.task?.trim() && n(x.hours) > 0).map((x) => ({ task: x.task.trim(), hours: n(x.hours) })),
       extras: p.extras.filter((x) => x.desc?.trim()).map((x) => ({ desc: x.desc.trim(), amount: n(x.amount) })),
-      markup, price_incl: n(p.price_incl) > 0 ? Math.round(n(p.price_incl) * 100) / 100 : null,
+      markup: null, markup_parts: markups.parts, markup_labour: markups.labour, price_incl: n(p.price_incl) > 0 ? Math.round(n(p.price_incl) * 100) / 100 : null,
       options: p.options.filter((o) => o.name?.trim()).map((o) => ({ name: o.name.trim(), price_incl: n(o.price_incl), cost_excl: n(o.cost_excl) })),
       on_website: Boolean(p.on_website), active: Boolean(p.active), updated_at: new Date().toISOString(),
     }
@@ -176,7 +178,9 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
             <dt>Workshop overhead {rates.overhead}%</dt><dd>{money(pc.cost - pc.direct)}</dd>
             <div className="rule" />
             <dt><b>Costs you</b></dt><dd><b>{money(pc.cost)}</b></dd>
-            <dt>Suggested at <input className="qty num" aria-label="Markup %" type="number" step="1" value={p.markup ?? ''} onChange={(e) => setP({ ...p, markup: e.target.value })} style={{ width: 64, display: 'inline-block' }} />% markup, incl. VAT</dt><dd>{money0(sug)}</dd>
+            <dt>Markup on parts and materials <input className="qty num" aria-label="Markup on parts %" type="number" step="5" min="0" value={p.markup_parts ?? def.parts} onChange={(e) => setP({ ...p, markup_parts: e.target.value })} style={{ width: 64, display: 'inline-block' }} />%</dt><dd className="hint">{money(pc.partsCost)} cost</dd>
+            <dt>Markup on labour <input className="qty num" aria-label="Markup on labour %" type="number" step="5" min="0" value={p.markup_labour ?? def.labour} onChange={(e) => setP({ ...p, markup_labour: e.target.value })} style={{ width: 64, display: 'inline-block' }} />%</dt><dd className="hint">{money(pc.labourCost)} cost</dd>
+            <dt><b>Suggested price incl. VAT</b></dt><dd><b>{money0(sug)}</b></dd>
           </dl>
           {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)', padding: '0 18px' }}>No price yet for {pc.unpriced.map((x) => x.name).join(', ')}: add it under Stock, or the cost is too low.</p>}
           <div className="row" style={{ alignItems: 'center' }}>

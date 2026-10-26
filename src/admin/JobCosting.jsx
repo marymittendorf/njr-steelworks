@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, customerDoc, legacyToLine, n, ownLine, partLine, productLine, ratesFrom, STATUSES } from '../costing.js'
+import { calc, customerDoc, legacyToLine, markupsFrom, n, ownLine, partLine, productLine, ratesFrom, STATUSES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote, Picker, PartPicker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
@@ -279,7 +279,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
         </aside>
       </div>
 
-      {workOut !== null && lines[workOut] && <WorkOutPrice line={lines[workOut]} prices={prices} rates={settingsRates} markup={settings.markup}
+      {workOut !== null && lines[workOut] && <WorkOutPrice line={lines[workOut]} prices={prices} rates={settingsRates} markups={markupsFrom(settings)}
         onClose={() => setWorkOut(null)} onUse={(line) => { updLine(workOut, line); setWorkOut(null) }} />}
       {newProduct && <ProductEditor product={newProduct} prices={prices} settings={settings} rates={settingsRates} me={me} toast={toast}
         onClose={() => setNewProduct(null)}

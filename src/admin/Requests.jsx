@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { ownLine, productLine, ratesFrom, templateLine, workedLine, TEMPLATE_FOR_REQUEST } from '../costing.js'
+import { markupsFrom, ownLine, productLine, ratesFrom, templateLine, workedLine, TEMPLATE_FOR_REQUEST } from '../costing.js'
 import { money0, shortDate, waNumber } from '../format.js'
 import { Pill, Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
 
@@ -48,8 +48,8 @@ export default function Requests({ settings, prices, go, refreshCount }) {
     const active = prices.filter((p) => p.active)
     // One line to start from: the AI's parts list, a template's suggested price, or an empty line for custom work.
     const line = ai
-      ? { ...workedLine({ mats: ai.mats.map((m) => ({ id: m.id, qty: m.qty })), labour: ai.labour, extras: ai.extras, markup: settings.markup }, active, rates, ownLine(ai.title)), qty: ai.units || 1 }
-      : tpl === 'custom' ? ownLine(r.type) : templateLine(tpl, active, rates, settings.markup)
+      ? { ...workedLine({ mats: ai.mats.map((m) => ({ id: m.id, qty: m.qty })), labour: ai.labour, extras: ai.extras, markup_parts: markupsFrom(settings).parts, markup_labour: markupsFrom(settings).labour }, active, rates, ownLine(ai.title)), qty: ai.units || 1 }
+      : tpl === 'custom' ? ownLine(r.type) : templateLine(tpl, active, rates, markupsFrom(settings))
     go('cost', {
       draft: {
         title: '', mats: [], labour: [], extras: [], products: [line],

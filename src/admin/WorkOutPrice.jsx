@@ -1,22 +1,23 @@
 import { useState } from 'react'
-import { n, productCost, suggestedPrice, workedLine, TEMPLATES } from '../costing.js'
+import { n, productCost, suggestedSplit, workedLine, TEMPLATES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { PartPicker } from './ui.jsx'
 import PartsPickList from './PartsPickList.jsx'
 
 // Pop-up for a one-off line: pick parts from Stock and hours → what it costs and a suggested price.
-export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClose }) {
+export default function WorkOutPrice({ line, prices, rates, markups, onUse, onClose }) {
   const active = prices.filter((p) => p.active)
   const w = line.worked || {}
   const [picking, setPicking] = useState(false)
   const [r, setR] = useState({
     mats: [...(w.mats || [])], labour: [...(w.labour || [{ task: 'Fabrication & welding', hours: 1 }])],
-    extras: [...(w.extras || [])], markup: w.markup ?? n(markup),
+    extras: [...(w.extras || [])],
+    markup_parts: w.markup_parts ?? w.markup ?? n(markups.parts), markup_labour: w.markup_labour ?? w.markup ?? n(markups.labour),
   })
   const setRow = (list, i, patch) => setR({ ...r, [list]: r[list].map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   const delRow = (list, i) => setR({ ...r, [list]: r[list].filter((_, k) => k !== i) })
   const pc = productCost(r, prices, rates)
-  const price = suggestedPrice(pc.cost, r.markup, rates.vat)
+  const price = suggestedSplit(pc, { parts: r.markup_parts, labour: r.markup_labour }, rates.vat)
 
   function loadTemplate(key) {
     const t = TEMPLATES[key]
@@ -29,7 +30,7 @@ export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClo
       mats: r.mats.filter((x) => x.id && n(x.qty) > 0).map((x) => ({ id: x.id, qty: n(x.qty) })),
       labour: r.labour.filter((x) => n(x.hours) > 0).map((x) => ({ task: x.task || 'Work', hours: n(x.hours) })),
       extras: r.extras.filter((x) => n(x.amount) > 0).map((x) => ({ desc: x.desc || 'Other', amount: n(x.amount) })),
-      markup: n(r.markup),
+      markup_parts: n(r.markup_parts), markup_labour: n(r.markup_labour),
     }
     onUse(workedLine(clean, prices, rates, line))
   }
@@ -83,7 +84,8 @@ export default function WorkOutPrice({ line, prices, rates, markup, onUse, onClo
         <div className="sheet" style={{ marginTop: 16 }}>
           <dl>
             <dt>Costs you (parts {money0(pc.materials)}, {pc.hours} h, overhead)</dt><dd>{money(pc.cost)}</dd>
-            <dt><label htmlFor="wo-markup">Markup %</label></dt><dd><input id="wo-markup" className="qty num" type="number" step="1" value={r.markup} onChange={(e) => setR({ ...r, markup: e.target.value })} /></dd>
+            <dt><label htmlFor="wo-mp">Markup on parts and materials %</label></dt><dd><input id="wo-mp" className="qty num" type="number" step="5" min="0" value={r.markup_parts} onChange={(e) => setR({ ...r, markup_parts: e.target.value })} /></dd>
+            <dt><label htmlFor="wo-ml">Markup on labour ({pc.hours} h) %</label></dt><dd><input id="wo-ml" className="qty num" type="number" step="5" min="0" value={r.markup_labour} onChange={(e) => setR({ ...r, markup_labour: e.target.value })} /></dd>
           </dl>
           <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>Suggested price each, incl. VAT</span><b className="num">{money0(price)}</b></div>
         </div>

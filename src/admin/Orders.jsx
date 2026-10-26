@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, ratesFrom, templateLine } from '../costing.js'
+import { calc, markupsFrom, ratesFrom, templateLine } from '../costing.js'
 import { ORDER_STAGES, isStockBuild, moveJob, nextStep, shortStamp } from '../orders.js'
 import { balanceOf, invoiceState } from './Invoices.jsx'
 import { money, money0 } from '../format.js'
@@ -53,7 +53,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
   function newStockBuild() {
     go('cost', {
       draft: {
-        title: '', mats: [], labour: [], extras: [], products: [templateLine('trailer', prices.filter((p) => p.active), ratesFrom(settings), settings.markup)],
+        title: '', mats: [], labour: [], extras: [], products: [templateLine('trailer', prices.filter((p) => p.active), ratesFrom(settings), markupsFrom(settings))],
         customer: 'Stock build', phone: '', email: '', notes: '', units: 1, galv: false,
         markup: settings.markup, status: 'Received', job_type: 'Built for stock', payment_status: 'Paid',
         request_id: null, rates: ratesFrom(settings),

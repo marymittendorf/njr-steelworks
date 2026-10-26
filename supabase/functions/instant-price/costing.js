@@ -167,13 +167,26 @@ export function productCost(product, prices, rates) {
   const labour = hours * n(rates.labour) + hours * n(rates.consumables)
   const extras = (product.extras || []).reduce((a, x) => a + n(x.amount), 0)
   const direct = materials + labour + extras
-  const cost = direct * (1 + n(rates.overhead) / 100)
-  return { parts, materials, hours, labour, extras, direct, cost, unpriced: parts.filter((x) => !x.cost || x.missing) }
+  const ovh = 1 + n(rates.overhead) / 100
+  const cost = direct * ovh
+  // Split for the two markups: parts, materials and outside costs vs workshop hours (each with overhead).
+  const partsCost = (materials + extras) * ovh
+  const labourCost = labour * ovh
+  return { parts, materials, hours, labour, extras, direct, cost, partsCost, labourCost, unpriced: parts.filter((x) => !x.cost || x.missing) }
 }
 
 // Suggested selling price incl. VAT: cost + markup + VAT, rounded up to the next R10.
 export function suggestedPrice(cost, markupPct, vatPct) {
   return Math.ceil((cost * (1 + n(markupPct) / 100) * (1 + n(vatPct) / 100)) / 10) * 10
+}
+
+// The two markups from Settings: { parts, labour } in %.
+export const markupsFrom = (settings) => ({ parts: n(settings.parts_markup), labour: n(settings.labour_markup) })
+
+// Suggested price incl. VAT with separate markups on parts & materials and on labour, rounded up to the next R10.
+export function suggestedSplit(pc, markups, vatPct) {
+  const excl = pc.partsCost * (1 + n(markups.parts) / 100) + pc.labourCost * (1 + n(markups.labour) / 100)
+  return Math.ceil((excl * (1 + n(vatPct) / 100)) / 10) * 10
 }
 
 // Margin (profit as % of the price excl. VAT) for a selling price incl. VAT.
@@ -205,21 +218,23 @@ export function ownLine(name = '', price_incl = '', qty = 1, cost_excl = '') {
 // The recipe is kept on the line (worked) so the helper reopens with the same parts and hours.
 export function workedLine(recipe, prices, rates, base = ownLine()) {
   const pc = productCost(recipe, prices, rates)
+  // Older recipes had one markup for everything.
+  const m = { parts: recipe.markup_parts ?? recipe.markup, labour: recipe.markup_labour ?? recipe.markup }
   return {
     ...base,
-    price_incl: suggestedPrice(pc.cost, recipe.markup, rates.vat),
+    price_incl: suggestedSplit(pc, m, rates.vat),
     cost_excl: Math.round(pc.cost * 100) / 100,
     parts: pc.parts.map((x) => ({ id: x.id, name: x.name, unit: x.unit, qty: x.qty, cost: x.cost, supplied_by: 'NJR', have: false })),
     labour: recipe.labour || [],
-    worked: { mats: recipe.mats || [], labour: recipe.labour || [], extras: recipe.extras || [], markup: n(recipe.markup) },
+    worked: { mats: recipe.mats || [], labour: recipe.labour || [], extras: recipe.extras || [], markup_parts: n(m.parts), markup_labour: n(m.labour) },
   }
 }
 
 // A template (or old-style job costing) as a worked own line.
-export function templateLine(key, prices, rates, markup) {
+export function templateLine(key, prices, rates, markups) {
   const t = TEMPLATES[key] || TEMPLATES.custom
   const ids = new Set(prices.map((p) => p.id))
-  const recipe = { mats: t.mats.filter(([id]) => ids.has(id)).map(([id, qty]) => ({ id, qty })), labour: t.labour.map(([task, hours]) => ({ task, hours })), extras: [], markup }
+  const recipe = { mats: t.mats.filter(([id]) => ids.has(id)).map(([id, qty]) => ({ id, qty })), labour: t.labour.map(([task, hours]) => ({ task, hours })), extras: [], markup_parts: markups.parts, markup_labour: markups.labour }
   return workedLine(recipe, prices, rates, ownLine(t.title))
 }
 

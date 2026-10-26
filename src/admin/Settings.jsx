@@ -10,13 +10,14 @@ const RATE_FIELDS = [
   ['labour', 'Labour rate (R/hour)', 'Workshop rate per welder-hour'],
   ['consumables', 'Consumables (R/hour)', 'Wire, gas, discs, electricity'],
   ['overhead', 'Workshop overhead (%)', 'Rent, tools, vehicle, admin'],
-  ['markup', 'Default markup (%)', 'On total cost, for new quotes'],
+
   ['vat', 'VAT (%)', 'South Africa: 15%'],
   ['galv', 'Galvanising (R/kg)', 'Outsourced hot-dip rate'],
   ['validity', 'Quote valid (days)', 'Printed on quotes'],
   ['deposit', 'Deposit (%)', 'Required to book work'],
   ['payment_terms', 'Payment terms (days)', '0 = due on receipt; sets invoice due dates'],
-  ['parts_markup', 'Markup on parts we buy (%)', 'Added to the cost when you sell a part on a quote'],
+  ['parts_markup', 'Markup on parts and materials (%)', 'Parts, steel and outside costs: Work out a price, Products, Add part'],
+  ['labour_markup', 'Markup on labour (%)', 'Workshop hours. 0 if the labour rate is already what you charge'],
 ]
 
 export default function Settings({ settings, prices, syncFromPrices, toast, me }) {
