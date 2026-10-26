@@ -9,9 +9,7 @@ export default function QuoteDoc({ job, settings, onClose, onSent, email = false
   const docRef = useRef(null)
   const [emailing, setEmailing] = useState(email && Boolean(job.id))
   const t = calc(job)
-  const r = job.rates
   const isInvoice = Boolean(job.invoice_no) // an accepted quote becomes an invoice (numbered by the database)
-  const lines = customerLines(job)
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -30,48 +28,59 @@ export default function QuoteDoc({ job, settings, onClose, onSent, email = false
         </div>
       </div>
       {emailing && <EmailPanel job={job} isInvoice={isInvoice} total={t.total} docRef={docRef} onSent={(msg) => { setEmailing(false); onSent?.(msg) }} />}
-      <div className="doc" ref={docRef}>
-        <div className="dh">
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <img src="/logo.webp" alt="NJR Steelworks" />
-            <div>
-              <b style={{ fontFamily: 'var(--f-display)', fontSize: '1.6rem' }}>NJR STEELWORKS</b>
-              <div className="muted">Fabrication · Repairs · Custom work</div>
-              {settings.people.map((p) => <div className="muted" key={p.name}>{p.name} {p.phone}{p.email && ` · ${p.email}`}</div>)}
-            </div>
+      <DocPaper job={job} settings={settings} paperRef={docRef} />
+    </div>
+  )
+}
+
+// The quote or invoice exactly as the customer gets it (white A4). Used in the pop-up and on the invoice page.
+export function DocPaper({ job, settings, paperRef }) {
+  const t = calc(job)
+  const r = job.rates
+  const isInvoice = Boolean(job.invoice_no)
+  const lines = customerLines(job)
+  return (
+    <div className="doc" ref={paperRef}>
+      <div className="dh">
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <img src="/logo.webp" alt="NJR Steelworks" />
+          <div>
+            <b style={{ fontFamily: 'var(--f-display)', fontSize: '1.6rem' }}>NJR STEELWORKS</b>
+            <div className="muted">Fabrication · Repairs · Custom work</div>
+            {settings.people.map((p) => <div className="muted" key={p.name}>{p.name} {p.phone}{p.email && ` · ${p.email}`}</div>)}
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <h2>{isInvoice ? 'Tax invoice' : 'Quotation'}</h2>
-            <div className="num"><b>{isInvoice ? job.invoice_no : job.quote_no}</b></div>
-            <div className="muted">Date {shortDate(isInvoice ? job.invoice_date : job.quote_date)}</div>
-            {isInvoice && <div className="muted num">Quote ref {job.quote_no}</div>}
-            {!isInvoice && <div className="muted">Valid until {shortDate(addDays(job.quote_date, r.validity))}</div>}
-          </div>
         </div>
-        <BillTo who={job} />
-        <div className="tbl-wrap"><table>
-          <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
-          <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
-        </table></div>
-        <div className="totals num">
-          <span>Subtotal</span><span>{money(t.excl)}</span>
-          <span>VAT {r.vat}%</span><span>{money(t.vat)}</span>
-          <span className="grand">Total</span><span className="grand">{money(t.total)}</span>
-          {!isInvoice && <><span className="muted">Deposit {r.deposit}% to book</span><span className="muted">{money(t.deposit)}</span></>}
-          {isInvoice && Number(job.amount_paid) > 0 && <><span className="muted">Paid to date</span><span className="muted">−{money(job.amount_paid)}</span></>}
-          {isInvoice && !job.invoice_voided_at && (Number(job.amount_paid) > 0
-            ? <><span><b>Balance due</b></span><span><b>{money(Math.max(0, t.total - Number(job.amount_paid)))}</b></span></>
-            : <><span><b>Deposit due now ({r.deposit}%)</b></span><span><b>{money(t.deposit)}</b></span></>)}
-          {isInvoice && job.invoice_voided_at && <><span><b>VOID</b></span><span><b>{money(0)}</b></span></>}
+        <div style={{ textAlign: 'right' }}>
+          <h2>{isInvoice ? 'Tax invoice' : 'Quotation'}</h2>
+          <div className="num"><b>{isInvoice ? job.invoice_no : job.quote_no}</b></div>
+          <div className="muted">Date {shortDate(isInvoice ? job.invoice_date : job.quote_date)}</div>
+          {isInvoice && <div className="muted num">Quote ref {job.quote_no}</div>}
+          {!isInvoice && <div className="muted">Valid until {shortDate(addDays(job.quote_date, r.validity))}</div>}
         </div>
-        {clientParts(job).length > 0 && <p className="muted" style={{ marginTop: 14 }}><b>Supplied by the customer (not charged):</b> {clientParts(job).map((m) => `${m.qty} × ${m.name}`).join(', ')}. NJR fits these as supplied.</p>}
-        <div className="terms">
-          <b>Terms. </b>
-          {isInvoice
-            ? (Number(job.amount_paid) >= t.total - 0.5 ? 'Thank you, this invoice is paid in full.' : `A ${r.deposit}% deposit is due before work starts; the balance is due on collection or delivery.`)
-            : `Quote valid for ${r.validity} days. Steel prices can change after that. Work is booked once the ${r.deposit}% deposit reflects; the balance is paid on collection.`}
-          {settings.bank_details && `\n\nBanking details:\n${settings.bank_details}\nReference: ${isInvoice ? job.invoice_no : job.quote_no}`}
-        </div>
+      </div>
+      <BillTo who={job} />
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
+        <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
+      </table></div>
+      <div className="totals num">
+        <span>Subtotal</span><span>{money(t.excl)}</span>
+        <span>VAT {r.vat}%</span><span>{money(t.vat)}</span>
+        <span className="grand">Total</span><span className="grand">{money(t.total)}</span>
+        {!isInvoice && <><span className="muted">Deposit {r.deposit}% to book</span><span className="muted">{money(t.deposit)}</span></>}
+        {isInvoice && Number(job.amount_paid) > 0 && <><span className="muted">Paid to date</span><span className="muted">−{money(job.amount_paid)}</span></>}
+        {isInvoice && !job.invoice_voided_at && (Number(job.amount_paid) > 0
+          ? <><span><b>Balance due</b></span><span><b>{money(Math.max(0, t.total - Number(job.amount_paid)))}</b></span></>
+          : <><span><b>Deposit due now ({r.deposit}%)</b></span><span><b>{money(t.deposit)}</b></span></>)}
+        {isInvoice && job.invoice_voided_at && <><span><b>VOID</b></span><span><b>{money(0)}</b></span></>}
+      </div>
+      {clientParts(job).length > 0 && <p className="muted" style={{ marginTop: 14 }}><b>Supplied by the customer (not charged):</b> {clientParts(job).map((m) => `${m.qty} × ${m.name}`).join(', ')}. NJR fits these as supplied.</p>}
+      <div className="terms">
+        <b>Terms. </b>
+        {isInvoice
+          ? (Number(job.amount_paid) >= t.total - 0.5 ? 'Thank you, this invoice is paid in full.' : `A ${r.deposit}% deposit is due before work starts; the balance is due on collection or delivery.`)
+          : `Quote valid for ${r.validity} days. Steel prices can change after that. Work is booked once the ${r.deposit}% deposit reflects; the balance is paid on collection.`}
+        {settings.bank_details && `\n\nBanking details:\n${settings.bank_details}\nReference: ${isInvoice ? job.invoice_no : job.quote_no}`}
       </div>
     </div>
   )

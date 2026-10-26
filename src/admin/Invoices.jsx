@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, customerLines, n } from '../costing.js'
+import { n } from '../costing.js'
 import { addDays, money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote, ListHead, SumStrip, Status, rowProps, BillTo, matches } from './ui.jsx'
-import QuoteDoc from './QuoteDoc.jsx'
+import { Loading, ErrorNote, BillTo, matches } from './ui.jsx'
+import QuoteDoc, { DocPaper } from './QuoteDoc.jsx'
 import JobCard from './JobCard.jsx'
 
 export const today = () => new Date().toISOString().slice(0, 10)
@@ -35,13 +35,19 @@ export function invoiceStatus(j, settings) {
   return { text: `Due in ${plural(-late)}`, tone: 'info', overdue: 0 }
 }
 
-const VIEWS = ['All invoices', 'Unpaid', 'Overdue', 'Partly paid', 'Paid', 'Void']
+const VIEWS = ['Unpaid invoices', 'Overdue invoices', 'Partly paid invoices', 'Paid invoices', 'Void invoices', 'All invoices']
+const inView = (view, state, st) => view === 'All invoices'
+  || (view === 'Unpaid invoices' ? ['Unpaid', 'Part paid'].includes(state)
+    : view === 'Overdue invoices' ? st.overdue > 0
+      : view === 'Partly paid invoices' ? state === 'Part paid'
+        : view === 'Paid invoices' ? state === 'Paid' : state === 'Void')
 
-// Invoices, Zoho style: summary of what's owed, one clean list, and each invoice opens as its own page.
+// Invoices like Zoho: a slim list on the left, the chosen invoice on the right exactly as the
+// customer gets it (white A4), with its actions on top and payments and emails underneath.
 export default function Invoices({ settings, prices, me, toast, target, go }) {
   const [jobs, setJobs] = useState(null)
   const [error, setError] = useState(null)
-  const [view, setView] = useState('All invoices')
+  const [view, setView] = useState(target?.jobId ? 'All invoices' : 'Unpaid invoices')
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState(target?.jobId || null)
 
@@ -54,53 +60,49 @@ export default function Invoices({ settings, prices, me, toast, target, go }) {
 
   if (!jobs) return error ? <ErrorNote error={error} /> : <Loading />
 
-  const open = openId && jobs.find((j) => j.id === openId)
-  if (open) return <InvoiceView job={open} jobs={jobs} settings={settings} prices={prices} me={me} toast={toast} go={go} onBack={() => setOpenId(null)} onChanged={load} />
-
-  const rows = jobs.map((j) => ({ j, st: invoiceStatus(j, settings), state: invoiceState(j), bal: balanceOf(j), due: dueDate(j, settings) }))
-  const live = rows.filter((x) => x.state !== 'Void')
-  const owing = live.reduce((a, x) => a + x.bal, 0)
-  const dueToday = live.filter((x) => x.bal > 0 && x.due === today()).reduce((a, x) => a + x.bal, 0)
-  const in30 = live.filter((x) => x.bal > 0 && x.due && x.due >= today() && daysBetween(today(), x.due) <= 30).reduce((a, x) => a + x.bal, 0)
-  const overdue = live.filter((x) => x.st.overdue > 0).reduce((a, x) => a + x.bal, 0)
-
-  const needle = q.trim().toLowerCase()
+  const rows = jobs.map((j) => ({ j, st: invoiceStatus(j, settings), state: invoiceState(j), bal: balanceOf(j) }))
+  const owing = rows.filter((x) => x.state !== 'Void').reduce((a, x) => a + x.bal, 0)
+  // Searching looks through every invoice, whatever the view.
   const shown = rows
-    .filter(({ state, st }) => view === 'All invoices' || (view === 'Unpaid' ? ['Unpaid', 'Part paid'].includes(state) : view === 'Overdue' ? st.overdue > 0 : view === 'Partly paid' ? state === 'Part paid' : state === view))
-    .filter(({ j }) => matches(needle, j.invoice_no, j.quote_no, j.customer, j.customer_company, j.phone, j.email, j.title))
+    .filter(({ state, st }) => q.trim() || inView(view, state, st))
+    .filter(({ j }) => matches(q, j.invoice_no, j.quote_no, j.customer, j.customer_company, j.phone, j.email, j.title))
+  const open = openId && jobs.find((j) => j.id === openId)
 
   return (
-    <>
-      <ListHead views={VIEWS} view={view} setView={setView} q={q} setQ={setQ} searchLabel="Search invoices" />
-      <ErrorNote error={error} />
-      <SumStrip items={[
-        ['Total owing', money0(owing), () => setView('Unpaid')],
-        ['Due today', money0(dueToday), null, dueToday > 0 ? 'warn' : null],
-        ['Due within 30 days', money0(in30)],
-        ['Overdue', money0(overdue), () => setView('Overdue'), overdue > 0 ? 'warn' : null],
-      ]} />
-      {!shown.length ? <div className="card hint">{jobs.length ? 'No invoices in this view.' : 'No invoices yet. A quote becomes an invoice when the customer accepts it (stage Received).'}</div> : (
-        <div className="tbl-wrap"><table>
-          <thead><tr><th>Date</th><th>Invoice #</th><th>Customer</th><th>Status</th><th>Due date</th><th className="r">Amount</th><th className="r">Balance due</th></tr></thead>
-          <tbody>{shown.map(({ j, st, bal, due, state }) => (
-            <tr key={j.id} {...rowProps(() => setOpenId(j.id))}>
-              <td className="num">{j.invoice_date ? shortDate(j.invoice_date) : '—'}</td>
-              <td className="num lnk">{j.invoice_no}</td>
-              <td>{j.customer}</td>
-              <td><Status text={st.text} tone={st.tone} /></td>
-              <td className="num">{due ? shortDate(due) : '—'}</td>
-              <td className="r num">{money(j.invoice_total)}</td>
-              <td className="r num">{state === 'Void' ? '—' : money(bal)}</td>
-            </tr>))}</tbody>
-        </table></div>
-      )}
-    </>
+    <div className={`inv-split${open ? ' has-open' : ''}`}>
+      <div className="inv-list">
+        <div className="inv-list-head">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label className="sr-only" htmlFor="inv-view">Which invoices</label>
+            <select id="inv-view" className="inv-view" value={view} onChange={(e) => setView(e.target.value)}>{VIEWS.map((v) => <option key={v}>{v}</option>)}</select>
+            <span className="hint num" style={{ whiteSpace: 'nowrap' }}>{money0(owing)} due</span>
+          </div>
+          <input type="search" aria-label="Search invoices" placeholder="Search number or customer…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <ErrorNote error={error} />
+        <div className="inv-rows">
+          {!shown.length && <p className="hint" style={{ padding: '12px 16px' }}>{jobs.length ? 'No invoices here.' : 'No invoices yet. Use Convert to invoice on a quote.'}</p>}
+          {shown.map(({ j, st, state, bal }) => (
+            <button key={j.id} type="button" className={`inv-row${j.id === openId ? ' on' : ''}`} onClick={() => setOpenId(j.id)}>
+              <span className="inv-row-top"><span className="inv-cust">{j.customer_company || j.customer}</span><span className="num">{money(state === 'Unpaid' || state === 'Part paid' ? bal : j.invoice_total)}</span></span>
+              <span className="inv-row-sub"><span className="num">{j.invoice_no} · {j.invoice_date ? shortDate(j.invoice_date) : '—'}</span><span className={`tx-${st.tone}`}>{st.text}</span></span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="inv-pane">
+        {open
+          ? <InvoicePane key={open.id} job={open} jobs={jobs} settings={settings} prices={prices} me={me} toast={toast} go={go} onBack={() => setOpenId(null)} onChanged={load} />
+          : <div className="inv-empty hint">Choose an invoice on the left to see it here.</div>}
+      </div>
+    </div>
   )
 }
 
-// One invoice as its own page: actions on top, the invoice as the customer sees it, then payments.
-function InvoiceView({ job, jobs, settings, prices, me, toast, go, onBack, onChanged }) {
+// The chosen invoice: number, status and actions on top; the invoice as the customer gets it; then its history.
+function InvoicePane({ job, jobs, settings, prices, me, toast, go, onBack, onChanged }) {
   const [payments, setPayments] = useState(null)
+  const [emails, setEmails] = useState([])
   const [paying, setPaying] = useState(false)
   const [more, setMore] = useState(false)
   const [showDoc, setShowDoc] = useState(false)
@@ -111,11 +113,13 @@ function InvoiceView({ job, jobs, settings, prices, me, toast, go, onBack, onCha
   const [error, setError] = useState(null)
   const st = invoiceStatus(job, settings)
   const bal = balanceOf(job)
-  const t = calc(job)
-  const lines = customerLines(job)
   const canPay = !job.invoice_voided_at && invoiceState(job) !== 'Paid'
+  const pill = { good: 'pill-good', warn: 'pill-warn', info: 'pill-info', bad: 'pill-bad', muted: 'pill-muted' }[st.tone]
 
-  const load = () => supabase.from('payments').select('*').eq('job_id', job.id).order('paid_on').then(({ data, error }) => { setPayments(data || []); setError(error) })
+  const load = () => {
+    supabase.from('payments').select('*').eq('job_id', job.id).order('paid_on').then(({ data, error }) => { setPayments(data || []); setError(error) })
+    supabase.from('job_emails').select('*').eq('job_id', job.id).order('sent_at', { ascending: false }).then(({ data }) => setEmails(data || []))
+  }
   useEffect(() => { load() }, [job.id, job.amount_paid])
 
   async function openProof(path) {
@@ -125,7 +129,7 @@ function InvoiceView({ job, jobs, settings, prices, me, toast, go, onBack, onCha
   async function removePayment(p) {
     const { error } = await supabase.from('payments').delete().eq('id', p.id)
     if (error) { setError(error); return }
-    setConfirmDel(null); toast('Payment removed'); await load(); onChanged()
+    setConfirmDel(null); toast('Payment removed'); load(); onChanged()
   }
   async function voidInvoice() {
     if (!voiding.trim()) { setError('Say why the invoice is void.'); return }
@@ -135,83 +139,71 @@ function InvoiceView({ job, jobs, settings, prices, me, toast, go, onBack, onCha
   }
 
   return (
-    <>
-      <div className="rec-bar">
-        <h1><button className="btn small" type="button" aria-label="Back to invoices" onClick={onBack}>←</button><span className="num">{job.invoice_no}</span></h1>
-        <div className="rec-acts">
-          {!job.invoice_voided_at && <button className="btn" type="button" onClick={() => go('cost', { jobId: job.id, invoice: true })}>Edit</button>}
-          <button className="btn" type="button" onClick={() => setCard(true)}>Job card</button>
-          <button className="btn" type="button" onClick={() => setShowDoc('email')}>Email</button>
-          <button className="btn" type="button" onClick={() => setShowDoc('view')}>View / print</button>
-          {canPay && <button className="btn primary" type="button" onClick={() => setPaying(!paying)}>Record payment</button>}
+    <div className="inv-pane-box">
+      <div className="inv-pane-head">
+        <div className="inv-title">
+          <button className="btn small inv-back" type="button" aria-label="Back to the list" onClick={onBack}>←</button>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><b className="num" style={{ fontSize: '1.15rem' }}>{job.invoice_no}</b><span className={`pill2 ${pill}`}>{st.text}</span></div>
+            <div className="hint" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.customer_company ? `${job.customer_company} · ${job.customer}` : job.customer}{!job.email && canPay && ' · no email on file'}</div>
+          </div>
+        </div>
+        <div className="inv-acts">
+          {!job.invoice_voided_at && <button type="button" onClick={() => go('cost', { jobId: job.id, invoice: true })}>✎ Edit</button>}
+          {!job.invoice_voided_at && <button type="button" onClick={() => setShowDoc('email')}>✉ Email</button>}
+          <button type="button" onClick={() => setShowDoc('view')}>⎙ PDF</button>
+          <button type="button" onClick={() => setCard(true)}>Job card</button>
+          <button type="button" onClick={() => setStatement(true)}>Statement</button>
           <div className="menu-more">
-            <button className="btn" type="button" aria-label="More" aria-expanded={more} onClick={() => setMore(!more)}>⋯</button>
+            <button type="button" aria-label="More" aria-expanded={more} onClick={() => setMore(!more)}>⋯</button>
             {more && <div>
-              <button type="button" onClick={() => { setMore(false); setStatement(true) }}>Customer statement</button>
               <button type="button" onClick={() => { setMore(false); go('customers', { name: job.customer }) }}>Open customer</button>
               {me?.role === 'owner' && !job.invoice_voided_at && !n(job.amount_paid) && <button type="button" onClick={() => { setMore(false); setVoiding('') }}>Void invoice</button>}
             </div>}
           </div>
+          {canPay && <button type="button" className="inv-pay" onClick={() => setPaying(!paying)}>Record payment</button>}
         </div>
       </div>
-      <div className="rec-meta">
-        <Status text={st.text} tone={st.tone} />
-        {!job.invoice_voided_at && <span>Balance due <b className="num" style={{ color: 'var(--fg)' }}>{money(bal)}</b></span>}
-        {n(job.amount_paid) > 0 && <span>Paid <span className="num">{money(job.amount_paid)}</span></span>}
-        <span>Due {dueDate(job, settings) ? shortDate(dueDate(job, settings)) : '—'}</span>
-        <span>{job.quote_no}</span>
-      </div>
-      <ErrorNote error={error} />
-      {job.invoice_voided_at && <div className="errmsg" style={{ marginBottom: 12 }}>Void since {shortDate(job.invoice_voided_at)}: {job.invoice_void_reason}</div>}
-      {voiding !== null && (
-        <div className="card block" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input aria-label="Reason for voiding" value={voiding} onChange={(e) => setVoiding(e.target.value)} placeholder="Why? e.g. customer cancelled" style={{ maxWidth: 320 }} />
-          <button className="btn small danger" type="button" onClick={voidInvoice}>Confirm void</button>
-          <button className="btn small ghost" type="button" onClick={() => setVoiding(null)}>Cancel</button>
+      {(error || voiding !== null || (paying && canPay) || job.invoice_voided_at) && (
+        <div style={{ padding: '0 18px' }}>
+          <ErrorNote error={error} />
+          {job.invoice_voided_at && <div className="errmsg">Void since {shortDate(job.invoice_voided_at)}: {job.invoice_void_reason}</div>}
+          {voiding !== null && (
+            <div className="card block" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+              <input aria-label="Reason for voiding" value={voiding} onChange={(e) => setVoiding(e.target.value)} placeholder="Why? e.g. customer cancelled" style={{ maxWidth: 320 }} />
+              <button className="btn small danger" type="button" onClick={voidInvoice}>Confirm void</button>
+              <button className="btn small ghost" type="button" onClick={() => setVoiding(null)}>Cancel</button>
+            </div>)}
+          {paying && canPay && <div style={{ marginTop: 12 }}><PaymentForm job={job} bal={bal} me={me} toast={toast} onDone={() => { setPaying(false); load(); onChanged() }} onCancel={() => setPaying(false)} /></div>}
         </div>)}
-      {paying && canPay && <PaymentForm job={job} bal={bal} me={me} toast={toast} onDone={async () => { setPaying(false); await load(); onChanged() }} onCancel={() => setPaying(false)} />}
 
-      <div className="paper">
-        <div className="ph-row">
-          <div><b style={{ fontFamily: 'var(--f-display)', fontSize: '1.5rem' }}>NJR STEELWORKS</b><div className="hint">George, Western Cape</div></div>
-          <div style={{ textAlign: 'right' }}><b style={{ fontFamily: 'var(--f-display)', fontSize: '1.5rem' }}>TAX INVOICE</b>
-            <div className="hint num">{job.invoice_date && shortDate(job.invoice_date)}{dueDate(job, settings) && ` · due ${n(settings.payment_terms) ? shortDate(dueDate(job, settings)) : 'on receipt'}`}</div></div>
-        </div>
-        <BillTo who={job} label="Bill to" mutedClass="hint" />
-        <table>
-          <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
-          <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
-        </table>
-        <div className="tots num">
-          <div><span className="hint">Sub total</span><span>{money(t.excl)}</span></div>
-          <div><span className="hint">VAT {job.rates.vat}%</span><span>{money(t.vat)}</span></div>
-          <div className="grand"><span>Total</span><span>{money(t.total)}</span></div>
-          {n(job.amount_paid) > 0 && <div><span className="hint">Paid</span><span>−{money(job.amount_paid)}</span></div>}
-          {!job.invoice_voided_at && <div><b>Balance due</b><b>{money(bal)}</b></div>}
+      <div className="inv-desk">
+        <div className="inv-sheet"><DocPaper job={job} settings={settings} /></div>
+        <div className="inv-history">
+          <h4>Payments received</h4>
+          {payments === null ? <Loading /> : !payments.length ? <p className="muted">No payments yet. Balance due {money(bal)}.</p> : (
+            <table><tbody>{payments.map((p) => (
+              <tr key={p.id}>
+                <td className="num">{shortDate(p.paid_on)}</td><td>{p.method}{p.reference && ` · ${p.reference}`}{p.recorded_by && <span className="muted"> · by {p.recorded_by}</span>}</td>
+                <td className="r num">{money(p.amount)}</td>
+                <td>{p.proof_path && <button className="linkbtn" type="button" onClick={() => openProof(p.proof_path)}>Proof</button>}</td>
+                <td>{me?.role === 'owner' && (confirmDel === p.id
+                  ? <button className="btn small danger" type="button" onClick={() => removePayment(p)}>Confirm</button>
+                  : <button className="x" type="button" aria-label="Remove payment" onClick={() => setConfirmDel(p.id)}>×</button>)}</td>
+              </tr>))}</tbody></table>
+          )}
+          <h4>Emails</h4>
+          {!emails.length ? <p className="muted">Not emailed yet.</p> : (
+            <ul>{emails.map((e) => <li key={e.id}>{e.kind} emailed to {e.sent_to} · {shortDate(e.sent_at)}{e.sent_by && ` · by ${e.sent_by}`}</li>)}</ul>
+          )}
+          {job.customer_response && <><h4>Online</h4><p>Quote {job.customer_response.toLowerCase()} online by {job.customer_response_name} · {shortDate(job.customer_response_at)}</p></>}
         </div>
       </div>
 
-      <div className="block-head"><h3>Payments received</h3></div>
-      {payments === null ? <Loading /> : !payments.length ? <p className="hint">No payments yet.</p> : (
-        <div className="tbl-wrap block"><table>
-          <thead><tr><th>Date</th><th>How</th><th>Reference</th><th className="r">Amount</th><th>Proof</th><th /></tr></thead>
-          <tbody>{payments.map((p) => (
-            <tr key={p.id}>
-              <td className="num">{shortDate(p.paid_on)}</td><td>{p.method}{p.recorded_by && <div className="hint">by {p.recorded_by}</div>}</td>
-              <td>{p.reference || '—'}{p.note && <div className="hint">{p.note}</div>}</td>
-              <td className="r num">{money(p.amount)}</td>
-              <td>{p.proof_path ? <button className="linkbtn" type="button" onClick={() => openProof(p.proof_path)}>View</button> : <span className="hint">—</span>}</td>
-              <td>{me?.role === 'owner' && (confirmDel === p.id
-                ? <button className="btn small danger" type="button" onClick={() => removePayment(p)}>Confirm</button>
-                : <button className="x" type="button" aria-label="Remove payment" onClick={() => setConfirmDel(p.id)}>×</button>)}</td>
-            </tr>))}</tbody>
-        </table></div>
-      )}
-
-      {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={(msg) => { toast(msg); setShowDoc(false) }} />}
+      {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={(msg) => { toast(msg); setShowDoc(false); load() }} />}
       {card && <JobCard job={job} prices={prices} me={me} toast={toast} onClose={() => setCard(false)} onSaved={(u, opts) => { onChanged(); if (!opts?.keepOpen) setCard(false) }} />}
       {statement && <Statement customer={job} jobs={jobs.filter((j) => sameCustomer(j, job))} settings={settings} onClose={() => setStatement(false)} />}
-    </>
+    </div>
   )
 }
 

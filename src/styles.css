@@ -398,3 +398,52 @@ tr.picked td{background:rgba(244,122,31,.08)}
   .jobcard-modal select,.jobcard-modal input{background:#fff;color:#111;border:1px solid #999}
 }
 @media print{.admin{display:block!important}.admin > .side,.main > :not(.modal){display:none!important}.main{padding:0!important}}
+
+/* Invoices: list left, invoice right (like Zoho / the skip program) */
+.inv-split{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;height:calc(100vh - 48px);min-height:520px}
+.inv-list,.inv-pane-box{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.inv-pane{min-width:0;min-height:0}
+.inv-list-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.inv-view{width:auto;flex:1;background:transparent;border:0;padding:2px 0;font-weight:700;font-size:1.05rem;color:var(--fg);cursor:pointer}
+.inv-view option{background:var(--panel)}
+.inv-list-head input{padding:7px 10px}
+.inv-rows{overflow-y:auto;flex:1}
+.inv-row{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);border-left:3px solid transparent;padding:11px 14px;color:var(--fg);cursor:pointer;font:inherit}
+.inv-row:hover{background:var(--panel-2)}
+.inv-row.on{background:rgba(244,122,31,.10);border-left-color:var(--accent)}
+.inv-row-top,.inv-row-sub{display:flex;justify-content:space-between;gap:10px}
+.inv-row-sub{font-size:.82rem;color:var(--muted)}
+.inv-cust{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-row.on .inv-cust{font-weight:700}
+.inv-empty{height:100%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px;text-align:center}
+.inv-pane-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line)}
+.inv-title{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.inv-back{display:none}
+.inv-acts{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.inv-acts > button,.inv-acts .menu-more > button{background:transparent;border:0;color:var(--fg);padding:7px 10px;border-radius:5px;cursor:pointer;font:inherit;font-size:.92rem;opacity:.85}
+.inv-acts > button:hover,.inv-acts .menu-more > button:hover{background:var(--panel-2);opacity:1}
+.inv-acts .inv-pay{background:var(--accent);color:var(--accent-ink);font-weight:700;opacity:1;margin-left:8px}
+.inv-acts .inv-pay:hover{background:var(--accent-hi)}
+.pill2{font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill-good{background:rgba(71,195,137,.15);color:var(--good)} .pill-warn{background:rgba(233,185,73,.15);color:var(--warn)}
+.pill-info{background:rgba(111,168,232,.15);color:var(--info)} .pill-bad{background:rgba(229,96,93,.15);color:var(--bad)} .pill-muted{background:rgba(154,161,170,.15);color:var(--muted)}
+.inv-desk{flex:1;overflow-y:auto;background:#e9e6e0;padding:24px}
+.inv-sheet{max-width:860px;margin:0 auto 16px;box-shadow:0 1px 10px rgba(0,0,0,.18)}
+.inv-sheet .doc{max-width:none;border-radius:0;min-height:1000px}
+.inv-history{max-width:860px;margin:0 auto;background:#fff;color:#1B1C1E;border-radius:4px;padding:16px 20px;box-shadow:0 1px 8px rgba(0,0,0,.08);font-size:.92rem}
+.inv-history h4{font-family:var(--f-label);text-transform:uppercase;letter-spacing:.1em;font-size:.78rem;color:#666;margin:10px 0 6px}
+.inv-history h4:first-child{margin-top:0}
+.inv-history .muted{color:#666}
+.inv-history table{font-size:.9rem}
+.inv-history td{border-bottom:1px solid #eee;color:#1B1C1E;padding:6px 8px}
+.inv-history ul{margin:0;padding-left:18px}
+.inv-history .linkbtn{color:#555}
+@media (max-width:960px){
+  .inv-split{grid-template-columns:1fr;height:auto}
+  .inv-split.has-open .inv-list{display:none}
+  .inv-split:not(.has-open) .inv-pane{display:none}
+  .inv-back{display:inline-flex}
+  .inv-rows{max-height:none}
+  .inv-desk{padding:10px}
+  .inv-sheet .doc{min-height:0;padding:18px}
+}
