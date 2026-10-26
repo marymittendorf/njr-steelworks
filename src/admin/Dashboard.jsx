@@ -39,7 +39,7 @@ export default function Dashboard({ go, settings, prices }) {
   const answered = jobs.filter((j) => j.customer_response_at && j.customer_response_at > weekAgo).sort((a, b) => b.customer_response_at.localeCompare(a.customer_response_at))
 
   const todo = [
-    ...answered.map((j) => [`${j.customer_response_name || j.customer} ${j.customer_response.toLowerCase()} quote ${j.quote_no} online${j.customer_response === 'Accepted' ? ` (invoice ${j.invoice_no})` : ''}`, 'cost', { jobId: j.id }]),
+    ...answered.map((j) => [`${j.customer_response_name || j.customer} ${j.customer_response.toLowerCase()} quote ${j.quote_no} online${j.customer_response === 'Accepted' ? ` (invoice ${j.invoice_no})` : ''}`, j.invoice_no ? 'invoices' : 'cost', { jobId: j.id }]),
     d.newReq && [s(d.newReq, 'new website request', 'new website requests'), 'requests'],
     overdue.length && [`${s(overdue.length, 'invoice is', 'invoices are')} overdue (${money0(overdue.reduce((a, j) => a + balanceOf(j), 0))})`, 'invoices'],
     short.length && [`${s(short.length, 'order is', 'orders are')} still waiting for parts`, 'orders'],

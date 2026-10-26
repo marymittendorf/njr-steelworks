@@ -64,7 +64,7 @@ export default function Jobs({ go }) {
         <div className="tbl-wrap"><table>
           <thead><tr><th>Date</th><th>Quote #</th><th>Customer</th><th>Item</th><th>Status</th><th className="r">Amount</th></tr></thead>
           <tbody>{shown.map(({ j, t, st }) => (
-            <tr key={j.id} {...rowProps(() => go('cost', { jobId: j.id }))}>
+            <tr key={j.id} {...rowProps(() => (j.invoice_no ? go('invoices', { jobId: j.id }) : go('cost', { jobId: j.id })))}>
               <td className="num">{shortDate(j.quote_date)}</td>
               <td className="num lnk">{j.quote_no}</td>
               <td>{j.customer}</td>

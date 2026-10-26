@@ -144,7 +144,7 @@ function StaffShell({ session }) {
           <div key={group || 'top'} style={{ display: 'contents' }}>
             {group && <div className="grp">{group}</div>}
             {items.filter(([k]) => k !== 'staff' || staff.role === 'owner').map(([k, label]) => (
-              <button key={k} type="button" className={group ? '' : 'top'} aria-current={(MENU_FOR[page] || page) === k ? 'page' : undefined}
+              <button key={k} type="button" className={group ? '' : 'top'} aria-current={(page === 'cost' && costTarget?.invoice ? 'invoices' : MENU_FOR[page] || page) === k ? 'page' : undefined}
                 onClick={() => go(k)}>
                 {label}{k === 'requests' && newCount > 0 && <span className="count">{newCount}</span>}
               </button>

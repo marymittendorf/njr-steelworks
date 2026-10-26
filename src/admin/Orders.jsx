@@ -100,7 +100,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
                   </td>
                   <td>{stock ? <span className="hint">Stock build</span> : <>{j.customer}<div className="hint">{j.phone}</div></>}</td>
                   <td>
-                    <button className="linkbtn lnk" type="button" style={{ textDecoration: 'none', fontSize: '1rem' }} onClick={() => go('cost', { jobId: j.id })}><b>{j.title}</b></button>{j.units > 1 && <span className="hint"> × {j.units}</span>}
+                    <button className="linkbtn lnk" type="button" style={{ textDecoration: 'none', fontSize: '1rem' }} onClick={() => (j.invoice_no ? go('invoices', { jobId: j.id }) : go('cost', { jobId: j.id }))}><b>{j.title}</b></button>{j.units > 1 && <span className="hint"> × {j.units}</span>}
                     <div className="hint num">{j.invoice_no ? `${j.invoice_no} · ${j.quote_no}` : j.quote_no}</div>
                   </td>
                   <td>

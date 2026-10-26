@@ -139,7 +139,7 @@ function InvoiceView({ job, jobs, settings, prices, me, toast, go, onBack, onCha
       <div className="rec-bar">
         <h1><button className="btn small" type="button" aria-label="Back to invoices" onClick={onBack}>←</button><span className="num">{job.invoice_no}</span></h1>
         <div className="rec-acts">
-          {!job.invoice_voided_at && <button className="btn" type="button" onClick={() => go('cost', { jobId: job.id })}>Edit</button>}
+          {!job.invoice_voided_at && <button className="btn" type="button" onClick={() => go('cost', { jobId: job.id, invoice: true })}>Edit</button>}
           <button className="btn" type="button" onClick={() => setCard(true)}>Job card</button>
           <button className="btn" type="button" onClick={() => setShowDoc('email')}>Email</button>
           <button className="btn" type="button" onClick={() => setShowDoc('view')}>View / print</button>

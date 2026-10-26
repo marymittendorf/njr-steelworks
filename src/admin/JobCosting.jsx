@@ -109,7 +109,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     await ensureStockItem(res.data)
     res.data = await syncInvoiceTotals(res.data)
     setJob(res.data)
-    toast(!j.invoice_no && res.data.invoice_no ? `Invoice ${res.data.invoice_no} issued` : 'Saved ' + res.data.quote_no)
+    toast(!j.invoice_no && res.data.invoice_no ? `Invoice ${res.data.invoice_no} issued` : 'Saved ' + (res.data.invoice_no || res.data.quote_no))
     return res.data
   }
 
@@ -136,9 +136,11 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   return (
     <>
       <div className="pagehead">
-        <div><h1>Quote</h1><p>{job.quote_no || 'New quote, not saved yet'}{job.invoice_no && ` · Invoice ${job.invoice_no}`}
+        <div><h1>{job.invoice_no ? 'Edit invoice' : 'Quote'}</h1><p>{job.invoice_no ? `${job.invoice_no} · from quote ${job.quote_no}` : job.quote_no || 'New quote, not saved yet'}
           {job.source_pdf_path && <> · <button className="linkbtn" type="button" onClick={async () => { const { data } = await supabase.storage.from('job-docs').createSignedUrl(job.source_pdf_path, 300); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }}>Original PDF quote</button></>}</p></div>
-        <button className="btn small" type="button" onClick={() => go('cost', null)}>New quote</button>
+        {job.invoice_no
+          ? <button className="btn small" type="button" onClick={() => go('invoices', { jobId: job.id })}>Back to invoice</button>
+          : <button className="btn small" type="button" onClick={() => go('cost', null)}>New quote</button>}
       </div>
 
       {job.customer_response && (
@@ -254,14 +256,14 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
             <dt>Price excl. VAT</dt><dd>{money(t.excl)}</dd>
             <dt>VAT {r.vat}%</dt><dd>{money(t.vat)}</dd>
           </dl>
-          <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>Quote total</span><b className="num">{money(t.total)}</b></div>
+          <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>{job.invoice_no ? 'Invoice total' : 'Quote total'}</span><b className="num">{money(t.total)}</b></div>
           <div className="row"><span>Deposit {r.deposit}%</span><b className="num">{money0(t.deposit)}</b></div>
           <div className="row hint"><span>Costs you {money0(t.cost)} · profit <b className="num" style={{ color: marginColour }}>{money0(t.markup)} ({t.margin.toFixed(0)}%)</b></span></div>
           {noCost > 0 && <div className="row hint" style={{ color: 'var(--warn)' }}>{noCost} line{noCost > 1 ? 's have' : ' has'} no cost, so profit looks higher than it is.</div>}
           <div className="acts">
-            <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save quote'}</button>
-            <button className="btn" type="button" disabled={busy} onClick={async () => { if (await save()) go('jobs') }}>Save and close</button>
-            <button className="btn ghost" type="button" disabled={busy} onClick={() => go('jobs')} title="Close without saving changes">Cancel</button>
+            <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : job.invoice_no ? 'Save invoice' : 'Save quote'}</button>
+            <button className="btn" type="button" disabled={busy} onClick={async () => { const saved = await save(); if (saved) (saved.invoice_no ? go('invoices', { jobId: saved.id }) : go('jobs')) }}>Save and close</button>
+            <button className="btn ghost" type="button" disabled={busy} onClick={() => (job.invoice_no ? go('invoices', { jobId: job.id }) : go('jobs'))} title="Close without saving changes">Cancel</button>
             {!job.invoice_no && (job.job_type || 'Customer job') === 'Customer job' && ['Draft', 'Quote sent'].includes(job.status) && (confirmConvert
               ? <button className="btn primary" type="button" disabled={busy} onClick={convertToInvoice}>Confirm: make invoice</button>
               : <button className="btn" type="button" disabled={busy} onClick={() => setConfirmConvert(true)} title="The customer accepted: issue the invoice and move the job to Orders">Convert to invoice</button>)}
