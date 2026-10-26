@@ -4,6 +4,7 @@ import { syncInvoiceTotals } from '../orders.js'
 import { customerLines, customPart, n } from '../costing.js'
 import { shortDate } from '../format.js'
 import { ErrorNote, PartPicker } from './ui.jsx'
+import PartsPickList from './PartsPickList.jsx'
 
 // Every part a job needs: its own parts plus the parts inside its products (e.g. a 2 m³ skip).
 export function jobParts(job) {
@@ -24,6 +25,7 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
   const [products, setProducts] = useState(() => (job.products || []).map((pl) => ({ ...pl, parts: (pl.parts || []).map((pt) => ({ ...pt })) })))
   const [notes, setNotes] = useState(job.job_notes || [])
   const [note, setNote] = useState('')
+  const [picking, setPicking] = useState(null) // 'NJR' | 'Client': choosing several parts at once
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const rows = jobParts({ mats, products })
@@ -119,11 +121,18 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
 
         <div className="no-print" style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn primary" type="button" disabled={busy} onClick={async () => { const u = await save(); if (u) onSaved?.(u) }}>{busy ? 'Saving…' : 'Save job card'}</button>
-          <button className="btn" type="button" onClick={() => setMats([...mats, customPart('', 'NJR')])}>Add a part we buy</button>
-          <button className="btn" type="button" onClick={() => setMats([...mats, customPart('', 'Client')])}>Client supplies a part</button>
+          <button className="btn" type="button" onClick={() => setPicking('NJR')}>Add parts we buy</button>
+          <button className="btn" type="button" onClick={() => setPicking('Client')}>Client supplies parts</button>
+          <button className="btn ghost" type="button" onClick={() => setMats([...mats, customPart('', 'Client')])}>Part not in Stock</button>
           <span className="hint">Parts the client supplies aren't taken off stock or charged, and are listed on the quote.</span>
         </div>
       </div>
+      {picking && <PartsPickList prices={prices} mats={[]} title={picking === 'Client' ? 'Parts the client supplies' : 'Parts we buy'} onClose={() => setPicking(null)}
+        onApply={(chosen) => {
+          // Workshop list only: no cost, so the quote price doesn't change.
+          const added = chosen.map(({ id, qty }) => { const p = prices.find((x) => x.id === id); return { ...customPart(p.name, picking), id, unit: p.unit, qty: n(qty) || 1 } })
+          setMats([...mats, ...added]); setPicking(null)
+        }} />}
     </div>
   )
 }

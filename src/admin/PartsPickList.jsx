@@ -4,7 +4,7 @@ import { money } from '../format.js'
 
 // Tick every part a product needs in one go: search, tick (or "tick all shown"), set quantities, add.
 // Parts already on the product start ticked with their quantity; unticking removes them.
-export default function PartsPickList({ prices, mats, onApply, onClose }) {
+export default function PartsPickList({ prices, mats, onApply, onClose, title = 'Choose parts' }) {
   const [sel, setSel] = useState(() => new Map(mats.filter((m) => m.id).map((m) => [m.id, m.qty])))
   const [q, setQ] = useState('')
   const words = q.toLowerCase().split(/\s+/).filter(Boolean)
@@ -31,7 +31,7 @@ export default function PartsPickList({ prices, mats, onApply, onClose }) {
   return (
     <div className="modal" style={{ zIndex: 95 }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="card" style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div className="block-head"><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>Choose parts</h3>
+        <div className="block-head"><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>{title}</h3>
           <button className="x" type="button" aria-label="Close" onClick={onClose}>×</button></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           <input type="search" autoFocus aria-label="Search parts" placeholder="Type to narrow the list, e.g. 2 m³ skip" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 220 }} />

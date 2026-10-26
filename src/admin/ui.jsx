@@ -84,7 +84,7 @@ export function Picker({ items, value, onChange, autoFocus, label = 'Part', sear
   return (
     <div className="picker">
       <input aria-label={label} role="combobox" aria-expanded={text !== null} autoFocus={autoFocus} autoComplete="off"
-        value={text ?? (current?.name || display || (value ? `${value} (not on the list)` : ''))}
+        value={text ?? (current?.name || (display !== undefined ? display : value ? `${value} (not on the list)` : ''))}
         placeholder={placeholder}
         onFocus={(e) => { setText(''); setHi(0); e.target.select() }}
         onChange={(e) => { setText(e.target.value); setHi(0) }}
