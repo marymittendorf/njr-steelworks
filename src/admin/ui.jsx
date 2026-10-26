@@ -60,7 +60,7 @@ export function PartPicker({ prices, ...rest }) {
 }
 
 // The same search box for any list of {id, name, active}: products on a quote, parts, etc.
-export function Picker({ items, value, onChange, autoFocus, label = 'Part', search, sub, placeholder, empty, onCreate, createLabel = 'New' }) {
+export function Picker({ items, value, onChange, autoFocus, label = 'Part', search, sub, placeholder, empty, onCreate, createLabel = 'New', display }) {
   const prices = items
   const current = prices.find((p) => p.id === value)
   const [text, setText] = useState(null) // null = not typing: show the chosen part's name
@@ -84,7 +84,7 @@ export function Picker({ items, value, onChange, autoFocus, label = 'Part', sear
   return (
     <div className="picker">
       <input aria-label={label} role="combobox" aria-expanded={text !== null} autoFocus={autoFocus} autoComplete="off"
-        value={text ?? (current?.name || (value ? `${value} (not on the list)` : ''))}
+        value={text ?? (current?.name || display || (value ? `${value} (not on the list)` : ''))}
         placeholder={placeholder}
         onFocus={(e) => { setText(''); setHi(0); e.target.select() }}
         onChange={(e) => { setText(e.target.value); setHi(0) }}

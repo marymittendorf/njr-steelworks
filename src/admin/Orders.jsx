@@ -120,7 +120,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
           </tbody>
         </table></div>
       )}
-      {partsFor && <JobCard job={partsFor} me={me} toast={toast} onClose={() => setPartsFor(null)} onSaved={(updated, opts) => { setJobs((list) => list.map((x) => (x.id === updated.id ? updated : x))); if (!opts?.keepOpen) setPartsFor(null) }} />}
+      {partsFor && <JobCard job={partsFor} prices={prices} me={me} toast={toast} onClose={() => setPartsFor(null)} onSaved={(updated, opts) => { setJobs((list) => list.map((x) => (x.id === updated.id ? updated : x))); if (!opts?.keepOpen) setPartsFor(null) }} />}
       {photosFor && <JobFile job={photosFor} me={me} toast={toast} onClose={() => setPhotosFor(null)} />}
       {importing && <ImportQuote settings={settings} onClose={() => setImporting(false)} onCreated={(job) => { setImporting(false); setTab(job.status); toast(`Order created for ${job.customer}: invoice ${job.invoice_no}`); load() }} />}
     </>

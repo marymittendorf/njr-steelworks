@@ -3,11 +3,11 @@ import { supabase } from '../supabase.js'
 import { syncInvoiceTotals } from '../orders.js'
 import { customerLines, customPart, n } from '../costing.js'
 import { shortDate } from '../format.js'
-import { ErrorNote } from './ui.jsx'
+import { ErrorNote, PartPicker } from './ui.jsx'
 
 // Every part a job needs: its own parts plus the parts inside its products (e.g. a 2 m³ skip).
 export function jobParts(job) {
-  const own = (job.mats || []).map((m, i) => ({ key: `m${i}`, src: 'mats', i, name: m.name, custom: m.custom, qty: m.qty, supplied_by: m.supplied_by || 'NJR', have: Boolean(m.have), from: null }))
+  const own = (job.mats || []).map((m, i) => ({ key: `m${i}`, src: 'mats', i, id: m.id, name: m.name, custom: m.custom, qty: m.qty, supplied_by: m.supplied_by || 'NJR', have: Boolean(m.have), from: null }))
   const inProducts = (job.products || []).flatMap((pl, pi) => (pl.parts || []).map((pt, j) => ({
     key: `p${pi}-${j}`, src: 'products', pi, j, name: pt.name, qty: Number(pt.qty) * Number(pl.qty || 1),
     supplied_by: pt.supplied_by || 'NJR', have: Boolean(pt.have), from: `${pl.qty} × ${pl.name}`,
@@ -19,7 +19,7 @@ const stamp = (iso) => new Date(iso).toLocaleString('en-ZA', { dateStyle: 'mediu
 
 // Job card for the workshop: the job, the work to do, notes (who and when), and every part with a
 // tick for "we have it" and who supplies it (NJR buys it, or the client supplies it). Prints on one sheet.
-export default function JobCard({ job, me, toast, onClose, onSaved }) {
+export default function JobCard({ job, prices = [], me, toast, onClose, onSaved }) {
   const [mats, setMats] = useState(() => (job.mats || []).map((m) => ({ ...m, supplied_by: m.supplied_by || 'NJR' })))
   const [products, setProducts] = useState(() => (job.products || []).map((pl) => ({ ...pl, parts: (pl.parts || []).map((pt) => ({ ...pt })) })))
   const [notes, setNotes] = useState(job.job_notes || [])
@@ -95,14 +95,18 @@ export default function JobCard({ job, me, toast, onClose, onSaved }) {
 
         <h4 className="jc-h">Parts</h4>
         <ErrorNote error={error} />
-        <div className="tbl-wrap"><table>
+        <div className="tbl-wrap open-ok"><table>
           <thead><tr><th style={{ width: 70 }}>Have it</th><th>Part</th><th className="r">Qty</th><th>Who supplies it</th><th className="no-print" /></tr></thead>
           <tbody>{rows.map((r) => {
             const header = r.from !== lastFrom ? (lastFrom = r.from, <tr key={`h-${r.key}`}><td colSpan="5" className="label" style={{ color: 'var(--accent-hi)' }}>{r.from || 'Other parts for this job'}</td></tr>) : null
             return [header,
               <tr key={r.key} className={r.supplied_by === 'Client' ? 'client-part' : ''}>
                 <td><input type="checkbox" checked={r.have} onChange={(e) => set(r, { have: e.target.checked })} aria-label={`Have ${r.name}`} style={{ width: 22, height: 22 }} /></td>
-                <td>{r.custom ? <input aria-label="Part name" value={r.name} onChange={(e) => set(r, { name: e.target.value })} placeholder="e.g. towing hitch ball" /> : r.name || <span className="hint">(no name)</span>}</td>
+                <td>{r.custom
+                  ? <PartPicker prices={prices} value={r.id} display={r.name} autoFocus={!r.name} label="Part"
+                      onChange={(id) => { const p = prices.find((x) => x.id === id); set(r, { id, name: p.name, unit: p.unit }) }}
+                      onCreate={(name) => name && set(r, { name })} createLabel="Use this name (not in Stock)" />
+                  : r.name || <span className="hint">(no name)</span>}</td>
                 <td className="r num">{r.custom ? <input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={r.qty} onChange={(e) => set(r, { qty: e.target.value })} /> : r.qty}</td>
                 <td><select aria-label="Who supplies it" value={r.supplied_by} onChange={(e) => set(r, { supplied_by: e.target.value })} style={{ width: 'auto' }}>
                   <option value="NJR">NJR buys it</option><option value="Client">Client supplies it</option></select></td>

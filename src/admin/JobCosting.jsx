@@ -287,7 +287,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           if (saved?.active) setAdding({ id: saved.id, qty: adding?.qty || 1, chosen: [] })
           syncWebsiteFromProducts(settings)
         }} />}
-      {showCard && <JobCard job={job} me={me} toast={toast} onClose={() => setShowCard(false)} onSaved={(u, opts) => { setJob(u); if (!opts?.keepOpen) setShowCard(false) }} />}
+      {showCard && <JobCard job={job} prices={prices} me={me} toast={toast} onClose={() => setShowCard(false)} onSaved={(u, opts) => { setJob(u); if (!opts?.keepOpen) setShowCard(false) }} />}
       {showPhotos && <JobFile job={job} me={me} toast={toast} onClose={() => setShowPhotos(false)} />}
       {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={async (msg) => {
         toast(msg); setShowDoc(false)

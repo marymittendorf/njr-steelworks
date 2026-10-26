@@ -38,7 +38,7 @@ export function invoiceStatus(j, settings) {
 const VIEWS = ['All invoices', 'Unpaid', 'Overdue', 'Partly paid', 'Paid', 'Void']
 
 // Invoices, Zoho style: summary of what's owed, one clean list, and each invoice opens as its own page.
-export default function Invoices({ settings, me, toast, target, go }) {
+export default function Invoices({ settings, prices, me, toast, target, go }) {
   const [jobs, setJobs] = useState(null)
   const [error, setError] = useState(null)
   const [view, setView] = useState('All invoices')
@@ -55,7 +55,7 @@ export default function Invoices({ settings, me, toast, target, go }) {
   if (!jobs) return error ? <ErrorNote error={error} /> : <Loading />
 
   const open = openId && jobs.find((j) => j.id === openId)
-  if (open) return <InvoiceView job={open} jobs={jobs} settings={settings} me={me} toast={toast} go={go} onBack={() => setOpenId(null)} onChanged={load} />
+  if (open) return <InvoiceView job={open} jobs={jobs} settings={settings} prices={prices} me={me} toast={toast} go={go} onBack={() => setOpenId(null)} onChanged={load} />
 
   const rows = jobs.map((j) => ({ j, st: invoiceStatus(j, settings), state: invoiceState(j), bal: balanceOf(j), due: dueDate(j, settings) }))
   const live = rows.filter((x) => x.state !== 'Void')
@@ -99,7 +99,7 @@ export default function Invoices({ settings, me, toast, target, go }) {
 }
 
 // One invoice as its own page: actions on top, the invoice as the customer sees it, then payments.
-function InvoiceView({ job, jobs, settings, me, toast, go, onBack, onChanged }) {
+function InvoiceView({ job, jobs, settings, prices, me, toast, go, onBack, onChanged }) {
   const [payments, setPayments] = useState(null)
   const [paying, setPaying] = useState(false)
   const [more, setMore] = useState(false)
@@ -209,7 +209,7 @@ function InvoiceView({ job, jobs, settings, me, toast, go, onBack, onChanged }) 
       )}
 
       {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={(msg) => { toast(msg); setShowDoc(false) }} />}
-      {card && <JobCard job={job} me={me} toast={toast} onClose={() => setCard(false)} onSaved={(u, opts) => { onChanged(); if (!opts?.keepOpen) setCard(false) }} />}
+      {card && <JobCard job={job} prices={prices} me={me} toast={toast} onClose={() => setCard(false)} onSaved={(u, opts) => { onChanged(); if (!opts?.keepOpen) setCard(false) }} />}
       {statement && <Statement customer={job} jobs={jobs.filter((j) => sameCustomer(j, job))} settings={settings} onClose={() => setStatement(false)} />}
     </>
   )
