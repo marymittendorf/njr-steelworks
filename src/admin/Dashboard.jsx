@@ -5,7 +5,7 @@ import { money0 } from '../format.js'
 import { Loading, SumStrip, rowProps } from './ui.jsx'
 import { balanceOf, invoiceStatus } from './Invoices.jsx'
 import { quoteStatus } from './Jobs.jsx'
-import { jobParts } from './PartsChecklist.jsx'
+import { jobParts } from './JobCard.jsx'
 
 // Home: the numbers that matter and a short list of what needs doing, each one click away.
 export default function Dashboard({ go, settings, prices }) {

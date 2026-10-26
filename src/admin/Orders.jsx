@@ -7,7 +7,7 @@ import { money, money0 } from '../format.js'
 import { Pill, Loading, ErrorNote, ListHead, SumStrip, matches } from './ui.jsx'
 import ImportQuote from './ImportQuote.jsx'
 import JobFile from './JobFile.jsx'
-import PartsChecklist, { jobParts } from './PartsChecklist.jsx'
+import JobCard, { jobParts } from './JobCard.jsx'
 
 const VIEWS = ['Open orders', 'Received', 'In production', 'Ready', 'Delivered', 'All orders']
 const inView = (view, j) => view === 'All orders' || (view === 'Open orders' ? j.status !== 'Delivered' : j.status === view)
@@ -93,7 +93,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
                       <button className="btn small" type="button" disabled={busy === j.id} onClick={() => advance(j, step[0], step[1])}>{step[1]}</button>
                     </div>}
                     <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => setPhotosFor(j)}>Photos &amp; hand-in</button></div>
-                    <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Parts {jobParts(j).filter((x) => x.have).length}/{jobParts(j).length}</button></div>
+                    <div><button className="linkbtn" type="button" onClick={() => setPartsFor(j)}>Job card · parts {jobParts(j).filter((x) => x.have).length}/{jobParts(j).length}</button></div>
                     {!stock && ['Ready', 'In production'].includes(j.status) && (
                       <div style={{ marginTop: 6 }}><button className="linkbtn" type="button" onClick={() => go('deliveries', { jobId: j.id })}>Book delivery</button></div>
                     )}
@@ -120,7 +120,7 @@ export default function Orders({ settings, prices, go, toast, me }) {
           </tbody>
         </table></div>
       )}
-      {partsFor && <PartsChecklist job={partsFor} toast={toast} onClose={() => setPartsFor(null)} onSaved={(updated) => { setJobs((list) => list.map((x) => (x.id === updated.id ? updated : x))); setPartsFor(null) }} />}
+      {partsFor && <JobCard job={partsFor} me={me} toast={toast} onClose={() => setPartsFor(null)} onSaved={(updated, opts) => { setJobs((list) => list.map((x) => (x.id === updated.id ? updated : x))); if (!opts?.keepOpen) setPartsFor(null) }} />}
       {photosFor && <JobFile job={photosFor} me={me} toast={toast} onClose={() => setPhotosFor(null)} />}
       {importing && <ImportQuote settings={settings} onClose={() => setImporting(false)} onCreated={(job) => { setImporting(false); setTab(job.status); toast(`Order created for ${job.customer}: invoice ${job.invoice_no}`); load() }} />}
     </>

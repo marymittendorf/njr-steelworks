@@ -6,6 +6,7 @@ import { Loading, ErrorNote, Picker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import WorkOutPrice from './WorkOutPrice.jsx'
+import JobCard from './JobCard.jsx'
 import { ProductEditor, blankProduct, syncWebsiteFromProducts } from './Products.jsx'
 import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../orders.js'
 
@@ -26,6 +27,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const [confirmDel, setConfirmDel] = useState(false)
   const [confirmConvert, setConfirmConvert] = useState(false)
   const [showPhotos, setShowPhotos] = useState(false)
+  const [showCard, setShowCard] = useState(false)
   const [catalogue, setCatalogue] = useState([])
   const settingsRates = ratesFrom(settings)
   const [adding, setAdding] = useState(null) // { id, qty, chosen: [] }
@@ -250,6 +252,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
               : <button className="btn" type="button" disabled={busy} onClick={() => setConfirmConvert(true)} title="The customer accepted: issue the invoice and move the job to Orders">Convert to invoice</button>)}
             <button className="btn" type="button" disabled={busy} onClick={() => openDoc('email')}>Email {job.invoice_no ? 'invoice' : 'quote'}</button>
             <button className="btn" type="button" disabled={busy} onClick={() => openDoc('view')}>View / print</button>
+            {job.id && <button className="btn" type="button" onClick={() => setShowCard(true)}>Job card</button>}
             {job.id && <button className="btn" type="button" onClick={() => setShowPhotos(true)}>Photos &amp; hand-in</button>}
             {me?.role === 'owner' && job.id && !job.invoice_no && (confirmDel
               ? <button className="btn small danger" type="button" onClick={deleteJob}>Confirm: delete {job.quote_no}</button>
@@ -269,6 +272,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
           if (saved?.active) setAdding({ id: saved.id, qty: adding?.qty || 1, chosen: [] })
           syncWebsiteFromProducts(settings)
         }} />}
+      {showCard && <JobCard job={job} me={me} toast={toast} onClose={() => setShowCard(false)} onSaved={(u, opts) => { setJob(u); if (!opts?.keepOpen) setShowCard(false) }} />}
       {showPhotos && <JobFile job={job} me={me} toast={toast} onClose={() => setShowPhotos(false)} />}
       {showDoc && <QuoteDoc job={job} settings={settings} email={showDoc === 'email'} onClose={() => setShowDoc(false)} onSent={async (msg) => {
         toast(msg); setShowDoc(false)

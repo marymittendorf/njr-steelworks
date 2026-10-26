@@ -383,3 +383,18 @@ td .lnk,.lnk{color:var(--info)}
 tr.picked td{background:rgba(244,122,31,.08)}
 .picker li.create{color:var(--accent-hi);font-weight:600;border-top:1px solid var(--line);margin-top:4px}
 @media print{.no-print,.site-head,.wa-float{display:none!important}}
+.jc-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0;border:1px solid var(--line);border-radius:8px;margin:8px 0 14px;overflow:hidden}
+.jc-info > div{padding:10px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.jc-info > div:last-child{border-right:0}
+.jc-h{font-family:var(--f-label);text-transform:uppercase;letter-spacing:.1em;font-size:.9rem;color:var(--muted);margin:14px 0 6px}
+.jc-work{margin:0;padding-left:20px}
+.jc-work li{padding:3px 0}
+.jc-notes{list-style:none;margin:0 0 8px;padding:0;border-left:3px solid var(--accent);padding-left:12px}
+.jc-notes li{padding:4px 0}
+@media print{
+  .jobcard-modal .card{background:#fff;color:#111;border:0;max-width:none;padding:0}
+  .jobcard-modal .hint,.jobcard-modal th,.jc-h{color:#444!important}
+  .jobcard-modal .tbl-wrap,.jobcard-modal td,.jobcard-modal th,.jc-info,.jc-info > div{background:#fff!important;border-color:#bbb!important}
+  .jobcard-modal select,.jobcard-modal input{background:#fff;color:#111;border:1px solid #999}
+}
+@media print{.admin{display:block!important}.admin > .side,.main > :not(.modal){display:none!important}.main{padding:0!important}}
