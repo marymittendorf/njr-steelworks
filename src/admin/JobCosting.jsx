@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, customerDoc, legacyToLine, n, ownLine, productLine, ratesFrom, STATUSES } from '../costing.js'
+import { calc, customerDoc, legacyToLine, n, ownLine, partLine, productLine, ratesFrom, STATUSES } from '../costing.js'
 import { money, money0 } from '../format.js'
-import { Loading, ErrorNote, Picker } from './ui.jsx'
+import { Loading, ErrorNote, Picker, PartPicker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import WorkOutPrice from './WorkOutPrice.jsx'
@@ -31,6 +31,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const [catalogue, setCatalogue] = useState([])
   const settingsRates = ratesFrom(settings)
   const [adding, setAdding] = useState(null) // { id, qty, chosen: [] }
+  const [addingPart, setAddingPart] = useState(null) // { id, qty, markup }: a stock part sold on the quote
   const [workOut, setWorkOut] = useState(null) // index of the own line being worked out
   const [newProduct, setNewProduct] = useState(null) // product being set up from this quote
   const [customers, setCustomers] = useState([]) // past customers, newest first, for the Customer list
@@ -175,10 +176,24 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
 
           <div className="block">
             <div className="block-head"><h3>On the quote</h3>
-              {!adding && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {!adding && !addingPart && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn small primary" type="button" onClick={() => setAdding({ id: '', qty: 1, chosen: [] })}>Add product</button>
+                <button className="btn small" type="button" onClick={() => setAddingPart({ id: '', qty: 1, markup: n(settings.parts_markup) })}>Add part</button>
                 <button className="btn small" type="button" onClick={() => addLine(ownLine())}>Add your own line</button>
               </div>}</div>
+            {addingPart && (() => {
+              const part = prices.find((x) => x.id === addingPart.id)
+              const line = part && partLine(part, Math.max(1, n(addingPart.qty)), addingPart.markup, settingsRates.vat)
+              return (
+                <div className="sugg" style={{ borderTop: 0 }}>
+                  <div style={{ flex: 1, minWidth: 240 }}><PartPicker prices={prices} value={addingPart.id} autoFocus={!addingPart.id} onChange={(id) => setAddingPart({ ...addingPart, id })} /></div>
+                  <label className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Qty <input className="qty num" aria-label="How many" type="number" min="1" step="1" value={addingPart.qty} onChange={(e) => setAddingPart({ ...addingPart, qty: e.target.value })} /></label>
+                  <label className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Markup <input className="qty num" aria-label="Markup %" type="number" min="0" step="5" value={addingPart.markup} onChange={(e) => setAddingPart({ ...addingPart, markup: e.target.value })} />%</label>
+                  {line && <span className="num">{money(line.price_incl)} each incl. VAT{!n(part.cost) && <span className="tx-warn"> · no cost yet</span>}</span>}
+                  <button className="btn small primary" type="button" disabled={!line} onClick={() => { addLine(line); setAddingPart(null) }}>Add</button>
+                  <button className="btn small ghost" type="button" onClick={() => setAddingPart(null)}>Cancel</button>
+                </div>)
+            })()}
             {adding && (() => {
               const prod = catalogue.find((x) => x.id === adding.id)
               return (

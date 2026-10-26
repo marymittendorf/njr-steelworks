@@ -16,6 +16,7 @@ const RATE_FIELDS = [
   ['validity', 'Quote valid (days)', 'Printed on quotes'],
   ['deposit', 'Deposit (%)', 'Required to book work'],
   ['payment_terms', 'Payment terms (days)', '0 = due on receipt; sets invoice due dates'],
+  ['parts_markup', 'Markup on parts we buy (%)', 'Added to the cost when you sell a part on a quote'],
 ]
 
 export default function Settings({ settings, prices, syncFromPrices, toast, me }) {

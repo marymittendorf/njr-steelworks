@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc } from './costing.js'
+import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc, partLine } from './costing.js'
 
 const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 20, validity: 14, deposit: 50 }
 
@@ -123,4 +123,12 @@ test('customer copy has selling prices and totals only, never costs', () => {
   assert.equal(d.total, 2300)
   assert.equal(d.lines[0].amount, 2000)
   assert.ok(!JSON.stringify(d).includes('600'))
+})
+
+test('a part sold on a quote: cost + markup + VAT, and the part goes with it', () => {
+  const l = partLine({ id: 'wk004', name: 'Bearing kit', unit: 'kit', cost: 230 }, 4, 25, 15)
+  assert.equal(l.price_incl, 330.63) // 230 × 1.25 × 1.15
+  assert.equal(l.cost_excl, 230)
+  assert.equal(l.qty, 4)
+  assert.equal(l.parts[0].id, 'wk004')
 })

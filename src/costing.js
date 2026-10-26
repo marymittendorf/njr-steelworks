@@ -247,3 +247,13 @@ export function customerDoc(job) {
     client_parts: clientParts(job).map((m) => `${n(m.qty)} × ${m.name}`),
   }
 }
+
+// A stock part sold on a quote: cost + markup + VAT each. The part rides along so stock and the job card know.
+export function partLine(price, qty, markupPct, vatPct) {
+  const each = Math.round(n(price.cost) * (1 + n(markupPct) / 100) * (1 + n(vatPct) / 100) * 100) / 100
+  return {
+    ...ownLine(price.name, each, qty, n(price.cost)),
+    parts: [{ id: price.id, name: price.name, unit: price.unit, qty: 1, cost: n(price.cost), supplied_by: 'NJR', have: false }],
+    markup: n(markupPct),
+  }
+}
