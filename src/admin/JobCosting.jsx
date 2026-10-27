@@ -215,7 +215,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                 </div>)
             })()}
 
-            <div className="tbl-wrap"><table>
+            <div className="tbl-wrap"><table className="lines-tbl">
               <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each incl. VAT</th><th className="r">Costs you each</th><th className="r">Line incl. VAT</th><th /></tr></thead>
               <tbody>
                 {lines.map((l, i) => (
