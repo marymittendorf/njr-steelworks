@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, customerDoc, legacyToLine, markupsFrom, n, ownLine, partLine, productLine, ratesFrom, STATUSES } from '../costing.js'
+import { calc, customerDoc, legacyToLine, markupsFrom, n, ownLine, partLine, productLine, RATE_LINES, rateLine, ratesFrom, STATUSES } from '../costing.js'
 import { money, money0 } from '../format.js'
 import { Loading, ErrorNote, Picker, PartPicker } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
@@ -31,6 +31,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
   const [catalogue, setCatalogue] = useState([])
   const settingsRates = ratesFrom(settings)
   const [adding, setAdding] = useState(null) // { id, qty, chosen: [] }
+  const [ownMenu, setOwnMenu] = useState(false) // the Add your own line menu
   const [addingPart, setAddingPart] = useState(null) // { id, qty, markup }: a stock part sold on the quote
   const [workOut, setWorkOut] = useState(null) // index of the own line being worked out
   const [newProduct, setNewProduct] = useState(null) // product being set up from this quote
@@ -181,7 +182,16 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
               {!adding && !addingPart && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn small primary" type="button" onClick={() => setAdding({ id: '', qty: 1, chosen: [] })}>Add product</button>
                 <button className="btn small" type="button" onClick={() => setAddingPart({ id: '', qty: 1, markup: n(settings.parts_markup) })}>Add part</button>
-                <button className="btn small" type="button" onClick={() => addLine(ownLine())}>Add your own line</button>
+                <div className="menu-more">
+                  <button className="btn small" type="button" aria-expanded={ownMenu} onClick={() => setOwnMenu(!ownMenu)}>Add your own line ▾</button>
+                  {ownMenu && <div>
+                    <button type="button" onClick={() => { addLine(ownLine()); setOwnMenu(false) }}>Blank line</button>
+                    {RATE_LINES.map(([k, label]) => {
+                      const l = rateLine(k, settings)
+                      return <button key={k} type="button" onClick={() => { addLine(l); setOwnMenu(false) }}>{label} <span className="hint num">· {money(l.price_incl)} incl. VAT</span></button>
+                    })}
+                  </div>}
+                </div>
               </div>}</div>
             {addingPart && (() => {
               const part = prices.find((x) => x.id === addingPart.id)

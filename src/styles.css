@@ -449,8 +449,12 @@ tr.picked td{background:rgba(244,122,31,.08)}
 }
 /* Quote lines: every box on one straight line; the description gets the room */
 .lines-tbl td{vertical-align:top}
-.lines-tbl td:first-child{min-width:280px;width:40%}
+.lines-tbl td:first-child{min-width:200px}
 .lines-tbl td:first-child input{width:100%}
 .lines-tbl td.r.num,.lines-tbl td.num{padding-top:17px}
 .lines-tbl .x{margin-top:8px}
 .lines-tbl td .linkbtn{display:inline-block;margin-top:4px;font-size:.82rem}
+.lines-tbl input.qty{width:64px}
+.lines-tbl input.money{width:96px}
+.lines-tbl td,.lines-tbl th{padding-left:8px;padding-right:8px}
+.menu-more > div{white-space:nowrap}

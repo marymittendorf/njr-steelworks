@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc, partLine, suggestedSplit } from './costing.js'
+import { calc, customerLines, computeFromPrices, fromTemplate, productCost, productLine, suggestedPrice, marginAt, ownLine, workedLine, legacyToLine, clientParts, customerDoc, partLine, suggestedSplit, rateLine } from './costing.js'
 
 const rates = { labour: 300, consumables: 50, overhead: 10, vat: 15, galv: 20, validity: 14, deposit: 50 }
 
@@ -145,4 +145,13 @@ test('two markups: parts and materials vs labour', () => {
   const line = workedLine({ ...recipe, markup_parts: 50, markup_labour: 0 }, prices, rates, ownLine('Repair'))
   assert.equal(line.price_incl, 1460)
   assert.equal(line.worked.markup_labour, 0)
+})
+
+test('own line from a Settings rate: cost + its markup + VAT', () => {
+  const settings = { ...rates, labour: 320, consumables: 45, galv: 22, parts_markup: 25, labour_markup: 150 }
+  const l = rateLine('labour', settings)
+  assert.equal(l.cost_excl, 320)
+  assert.equal(l.price_incl, 920) // 320 × 2.5 × 1.15
+  assert.equal(rateLine('workshop', settings).cost_excl, 365)
+  assert.equal(rateLine('galv', settings).price_incl, 31.63) // 22 × 1.25 × 1.15
 })

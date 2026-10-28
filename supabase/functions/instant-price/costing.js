@@ -272,3 +272,25 @@ export function partLine(price, qty, markupPct, vatPct) {
     markup: n(markupPct),
   }
 }
+
+// "Add your own line" from a Settings rate: labour, consumables or galvanising, priced at cost + markup + VAT.
+// qty is hours (or kg for galvanising); change it on the line.
+export const RATE_LINES = [
+  ['labour', 'Labour (per hour)'],
+  ['workshop', 'Labour + consumables (per hour)'],
+  ['consumables', 'Consumables (per hour)'],
+  ['galv', 'Galvanising (per kg)'],
+]
+export function rateLine(kind, settings) {
+  const r = ratesFrom(settings)
+  const m = markupsFrom(settings)
+  const [name, cost, markup] = {
+    labour: ['Labour', r.labour, m.labour],
+    workshop: ['Workshop labour', r.labour + r.consumables, m.labour],
+    consumables: ['Consumables (wire, gas, discs)', r.consumables, m.parts],
+    galv: ['Hot-dip galvanising (per kg)', r.galv, m.parts],
+  }[kind]
+  // toFixed first so a half cent (e.g. 31.625) rounds up, not down through floating-point error
+  const each = Math.round(Number((cost * (1 + n(markup) / 100) * (1 + r.vat / 100)).toFixed(6)) * 100) / 100
+  return { ...ownLine(name, each, 1, cost), rate: kind }
+}
