@@ -39,7 +39,7 @@ export default function AdminApp() {
 const MENU = [
   [null, [['dash', 'Home']]],
   ['Sales', [['requests', 'Website requests'], ['customers', 'Customers'], ['jobs', 'Quotes'], ['orders', 'Orders'], ['deliveries', 'Deliveries'], ['invoices', 'Invoices'], ['payments', 'Payments received']]],
-  ['Purchases', [['stock', 'Stock'], ['expenses', 'Expenses'], ['petty', 'Petty cash']]],
+  ['Purchases', [['stock', 'Parts'], ['expenses', 'Expenses'], ['petty', 'Petty cash']]],
   ['Money', [['banking', 'Banking'], ['reports', 'Reports']]],
   ['Setup', [['products', 'Products'], ['gallery', 'Website photos'], ['settings', 'Settings'], ['staff', 'Staff']]], // Staff: owners only
 ]

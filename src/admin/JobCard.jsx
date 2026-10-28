@@ -107,7 +107,7 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
                 <td>{r.custom
                   ? <PartPicker prices={prices} value={r.id} display={r.name} autoFocus={!r.name} label="Part"
                       onChange={(id) => { const p = prices.find((x) => x.id === id); set(r, { id, name: p.name, unit: p.unit }) }}
-                      onCreate={(name) => name && set(r, { name })} createLabel="Use this name (not in Stock)" />
+                      onCreate={(name) => name && set(r, { name })} createLabel="Use this name (not in Parts)" />
                   : r.name || <span className="hint">(no name)</span>}</td>
                 <td className="r num">{r.custom ? <input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={r.qty} onChange={(e) => set(r, { qty: e.target.value })} /> : r.qty}</td>
                 <td><select aria-label="Who supplies it" value={r.supplied_by} onChange={(e) => set(r, { supplied_by: e.target.value })} style={{ width: 'auto' }}>
@@ -123,7 +123,7 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
           <button className="btn primary" type="button" disabled={busy} onClick={async () => { const u = await save(); if (u) onSaved?.(u) }}>{busy ? 'Saving…' : 'Save job card'}</button>
           <button className="btn" type="button" onClick={() => setPicking('NJR')}>Add parts we buy</button>
           <button className="btn" type="button" onClick={() => setPicking('Client')}>Client supplies parts</button>
-          <button className="btn ghost" type="button" onClick={() => setMats([...mats, customPart('', 'Client')])}>Part not in Stock</button>
+          <button className="btn ghost" type="button" onClick={() => setMats([...mats, customPart('', 'Client')])}>Part not in Parts</button>
           <span className="hint">Parts the client supplies aren't taken off stock or charged, and are listed on the quote.</span>
         </div>
       </div>

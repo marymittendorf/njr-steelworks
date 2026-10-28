@@ -50,7 +50,7 @@ export default function WorkOutPrice({ line, prices, rates, markups, onUse, onCl
 
         <div className="block-head" style={{ marginTop: 14 }}><h3>Parts</h3><span style={{ display: 'flex', gap: 8 }}><button className="btn small primary" type="button" disabled={!active.length} onClick={() => setPicking(true)}>Choose parts</button><button className="btn small" type="button" disabled={!active.length} onClick={() => setR({ ...r, mats: [...r.mats, { id: '', qty: 1 }] })}>Add one part</button></span></div>
         <div className="tbl-wrap open-ok"><table>
-          <thead><tr><th>Part (from Stock)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
+          <thead><tr><th>Part (from Parts)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
           <tbody>{r.mats.map((x, i) => {
             const pr = prices.find((y) => y.id === x.id)
             return (
@@ -89,7 +89,7 @@ export default function WorkOutPrice({ line, prices, rates, markups, onUse, onCl
           </dl>
           <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>Suggested price each, incl. VAT</span><b className="num">{money0(price)}</b></div>
         </div>
-        {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)' }}>No price yet for: {pc.unpriced.map((x) => x.name).join(', ')}. Add it under Stock.</p>}
+        {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)' }}>No price yet for: {pc.unpriced.map((x) => x.name).join(', ')}. Add it under Parts.</p>}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button className="btn primary" type="button" onClick={use}>Use this price</button>
           <button className="btn ghost" type="button" onClick={onClose}>Cancel</button>

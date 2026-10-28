@@ -64,7 +64,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
           })}</tbody>
         </table></div>
       )}
-      <p className="hint">"Costs you" uses today's part prices from Stock and your labour, consumables and overhead rates. Margin is profit as a % of your price excl. VAT.</p>
+      <p className="hint">"Costs you" uses today's part prices from Parts and your labour, consumables and overhead rates. Margin is profit as a % of your price excl. VAT.</p>
       {edit && <ProductEditor product={edit} prices={prices} settings={settings} rates={rates} me={me} toast={toast}
         onClose={() => setEdit(null)} onSaved={async () => { setEdit(null); await syncWebsiteFromProducts(settings); await syncFromPrices?.(); load() }} />}
     </>
@@ -124,7 +124,7 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
 
         <div className="block-head" style={{ marginTop: 14 }}><h3>What goes into one</h3><span style={{ display: 'flex', gap: 8 }}><button className="btn small primary" type="button" disabled={!active.length} onClick={() => setPicking(true)}>Choose parts</button><button className="btn small" type="button" disabled={!active.length} onClick={() => setP({ ...p, mats: [...p.mats, { id: '', qty: 1 }] })}>Add one part</button></span></div>
         <div className="tbl-wrap open-ok"><table>
-          <thead><tr><th>Part (from Stock)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
+          <thead><tr><th>Part (from Parts)</th><th className="r">Qty</th><th className="r">Each</th><th className="r">Line</th><th /></tr></thead>
           <tbody>{p.mats.map((x, i) => {
             const pr = prices.find((y) => y.id === x.id)
             return (
@@ -182,7 +182,7 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
             <dt>Markup on labour <input className="qty num" aria-label="Markup on labour %" type="number" step="5" min="0" value={p.markup_labour ?? def.labour} onChange={(e) => setP({ ...p, markup_labour: e.target.value })} style={{ width: 64, display: 'inline-block' }} />%</dt><dd className="hint">{money(pc.labourCost)} cost</dd>
             <dt><b>Suggested price incl. VAT</b></dt><dd><b>{money0(sug)}</b></dd>
           </dl>
-          {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)', padding: '0 18px' }}>No price yet for {pc.unpriced.map((x) => x.name).join(', ')}: add it under Stock, or the cost is too low.</p>}
+          {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)', padding: '0 18px' }}>No price yet for {pc.unpriced.map((x) => x.name).join(', ')}: add it under Parts, or the cost is too low.</p>}
           <div className="row" style={{ alignItems: 'center' }}>
             <label htmlFor="pr-price"><b>Your price incl. VAT</b></label>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

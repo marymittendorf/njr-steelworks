@@ -46,7 +46,7 @@ export default function Dashboard({ go, settings, prices }) {
     ready.length && [`${s(ready.length, 'job is', 'jobs are')} ready for delivery or collection`, 'orders'],
     expired.length && [`${s(expired.length, 'quote has', 'quotes have')} expired without an answer`, 'jobs'],
     d.bankOpen && [`${s(d.bankOpen, 'bank line needs', 'bank lines need')} matching`, 'banking'],
-    noPrice.length && [`${s(noPrice.length, 'stock item has', 'stock items have')} no price yet`, 'stock'],
+    noPrice.length && [`${s(noPrice.length, 'part has', 'parts have')} no price yet`, 'stock'],
   ].filter(Boolean)
 
   return (

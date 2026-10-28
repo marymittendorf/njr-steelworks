@@ -59,8 +59,8 @@ export default function Stock({ go, toast, settings, prices, me, reload, syncFro
   return (
     <>
       <div className="pagehead">
-        <h1>Stock</h1>
-        <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search stock" />
+        <h1>Parts</h1>
+        <div className="lh-tools"><SearchBox q={q} setQ={setQ} label="Search parts" />
           {!adding && <button className="btn" type="button" onClick={() => setAdding({ ...blankItem })}>Add existing stock</button>}</div>
       </div>
       <ErrorNote error={error} />

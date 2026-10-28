@@ -56,7 +56,7 @@ export const rowProps = (open) => ({ className: 'clickable', tabIndex: 0, onClic
 export function PartPicker({ prices, vat = 15, ...rest }) {
   return <Picker items={prices} search={(p) => `${p.name} ${p.id} ${p.notes || ''}`}
     sub={(p) => `${Number(p.cost) ? `R${Number(p.cost).toFixed(2)} excl. · R${(Number(p.cost) * (1 + vat / 100)).toFixed(2)} incl. VAT` : 'no price'} · ${p.unit}`}
-    placeholder="Type to find a part…" empty={(t) => `No part matches "${t}". Add it under Stock first.`} {...rest} />
+    placeholder="Type to find a part…" empty={(t) => `No part matches "${t}". Add it under Parts first.`} {...rest} />
 }
 
 // The same search box for any list of {id, name, active}: products on a quote, parts, etc.

@@ -50,7 +50,7 @@ export default function PartsPickList({ prices, mats, onApply, onClose, title = 
                 <td className="r">{on && <input className="qty num" aria-label={`How many ${p.name}`} type="number" min="0" step="0.5" value={sel.get(p.id)} onChange={(e) => setQty(p.id, e.target.value)} />}</td>
               </tr>)
           })}
-          {!shown.length && <tr><td colSpan="5" className="hint">No part matches "{q}". Add it under Stock first.</td></tr>}</tbody>
+          {!shown.length && <tr><td colSpan="5" className="hint">No part matches "{q}". Add it under Parts first.</td></tr>}</tbody>
         </table></div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn primary" type="button" onClick={apply}>
