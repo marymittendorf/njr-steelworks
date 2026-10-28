@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { n } from '../costing.js'
+import { customPart, n } from '../costing.js'
 import { money } from '../format.js'
 import { readDocument } from '../docReader.js'
 import { parseSlip, parseInvoiceLines } from '../docParse.js'
@@ -11,14 +11,24 @@ const today = () => new Date().toISOString().slice(0, 10)
 const r2 = (v) => Math.round(v * 100) / 100
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || `item${Date.now() % 100000}`
 
-// Upload a supplier invoice → read supplier, date, number and each item → check →
-// items go into parts & materials stock at the purchase price, the purchase goes into Expenses.
+// Upload a supplier invoice → read supplier, date, number and each item → check → then either:
+//  NJR bought it: items go into parts on hand at the purchase price, the purchase goes into Expenses;
+//  the client bought it: items go onto the Parts list (nothing on hand, no expense) and onto a job as client-supplied.
 export default function PurchaseImport({ manual, prices, me, toast, onClose, onSaved }) {
   const [file, setFile] = useState(null)
   const [reading, setReading] = useState(null)
   const [error, setError] = useState(null)
   const [f, setF] = useState(() => (manual ? { supplier: '', invoice_date: today(), invoice_no: '', method: 'EFT', docTotal: null, docVat: 0, inclVat: false, vatOn: true, items: [{ desc: '', qty: 1, unit: '', stock: '', updateCost: true }] } : null))
   const [busy, setBusy] = useState(false)
+  const [who, setWho] = useState(null) // 'NJR' | 'Client'
+  const [jobs, setJobs] = useState([])
+  const [jobId, setJobId] = useState('')
+  // Jobs a client-bought part can go onto: open quotes and orders, invoices first.
+  useEffect(() => {
+    supabase.from('jobs').select('id, quote_no, invoice_no, customer, customer_company, title, mats, status')
+      .in('status', ['Draft', 'Quote sent', 'Received', 'In production', 'Ready']).order('created_at', { ascending: false })
+      .then(({ data }) => { const list = (data || []).sort((a, b) => Boolean(b.invoice_no) - Boolean(a.invoice_no)); setJobs(list); if (list.length === 1) setJobId(list[0].id) })
+  }, [])
 
   const findStock = (desc) => prices.find((s) => s.name.toLowerCase() === desc.trim().toLowerCase())?.id || ''
 
@@ -56,6 +66,8 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
 
   async function save() {
     const items = f.items.filter((it) => it.desc.trim() && n(it.qty) > 0)
+    if (!who) { setError('Say who bought it: NJR or the client.'); return }
+    if (who === 'Client') return saveClient(items)
     if (!f.supplier.trim()) { setError('Add the supplier.'); return }
     if (!items.length) { setError('Add at least one item with a quantity.'); return }
     setBusy(true); setError(null)
@@ -102,11 +114,50 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
     } catch (err) { setError(err) } finally { setBusy(false) }
   }
 
+  // The client bought it: Parts list only (nothing on hand, no expense), and onto the chosen job as client-supplied.
+  async function saveClient(items) {
+    if (!items.length) { setError('Add at least one item with a quantity.'); return }
+    setBusy(true); setError(null)
+    try {
+      const from = [f.supplier.trim(), f.invoice_no.trim(), f.invoice_date].filter(Boolean).join(' · ')
+      const taken = new Set(prices.map((x) => x.id))
+      const onJob = []
+      for (const it of items) {
+        const unitCost = r2(exclUnit(it))
+        let item = prices.find((x) => x.id === it.stock) || prices.find((x) => x.name.toLowerCase() === it.desc.trim().toLowerCase())
+        if (item) {
+          if (it.updateCost && unitCost > 0) {
+            const { error } = await supabase.from('prices').update({ cost: unitCost }).eq('id', item.id)
+            if (error) throw error
+          }
+        } else {
+          let id = slug(it.desc.trim())
+          while (taken.has(id)) id = `${id.slice(0, 17)}${Math.floor(Math.random() * 900 + 100)}`
+          taken.add(id)
+          const sort = Math.max(0, ...prices.map((x) => x.sort || 0)) + 10
+          const { data, error } = await supabase.from('prices').insert({ id, name: it.desc.trim(), unit: 'each', cost: unitCost, kg: 0, qty_on_hand: 0, sort,
+            notes: `${from ? `${from} · ` : ''}bought by the customer` }).select().single()
+          if (error) throw error
+          item = data; prices.push(data)
+        }
+        // Workshop list only: no cost on the job, so the quote or invoice price doesn't change.
+        onJob.push({ ...customPart(item.name, 'Client'), id: item.id, unit: item.unit, qty: n(it.qty) })
+      }
+      const job = jobs.find((j) => j.id === jobId)
+      if (job) {
+        const { error } = await supabase.from('jobs').update({ mats: [...(job.mats || []), ...onJob], updated_at: new Date().toISOString() }).eq('id', job.id)
+        if (error) throw error
+      }
+      toast(`${items.length} part${items.length === 1 ? '' : 's'} added to the Parts list${job ? ` and to ${job.invoice_no || job.quote_no} as supplied by the client` : ''}`)
+      onSaved()
+    } catch (err) { setError(err) } finally { setBusy(false) }
+  }
+
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
       <div className="card" style={{ maxWidth: 980, margin: '0 auto' }}>
         <div className="block-head"><h3 style={{ fontSize: '1.6rem', textTransform: 'uppercase' }}>{manual ? 'Type in a purchase' : 'Upload a purchase invoice'}</h3><button className="x" type="button" aria-label="Close" onClick={onClose}>×</button></div>
-        <p className="hint" style={{ marginTop: 0 }}>{manual ? "What you bought, how many and what you paid. It's added to what you have on hand and recorded in Expenses." : "A PDF invoice or a photo of the slip. We read the supplier and each item; you check them; they're added to what you have on hand and recorded in Expenses."}</p>
+        <p className="hint" style={{ marginTop: 0 }}>{manual ? "What you bought, how many and what you paid. It's added to what you have on hand and recorded in Expenses." : "A PDF or a photo of the slip. We read each item; you check them and say who bought it."}</p>
         {manual
           ? <div className="field"><label htmlFor="pi-att">Receipt or slip (optional)</label><input id="pi-att" type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files[0] || null)} /></div>
           : <div className="field slip-drop"><label htmlFor="pi-file">Supplier invoice (PDF or photo)</label>
@@ -115,11 +166,22 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
         <ErrorNote error={error} />
 
         {f && !reading && <>
-          <div className="fgrid" style={{ marginTop: 12, gridTemplateColumns: 'repeat(4, 1fr)' }}>
-            <div className="field"><label htmlFor="pi-sup">Supplier</label><input id="pi-sup" value={f.supplier} onChange={(e) => setF({ ...f, supplier: e.target.value })} /></div>
+          <div className="who-bought" role="group" aria-label="Who bought it?">
+            <b>Who bought it?</b>
+            <button type="button" aria-pressed={who === 'NJR'} onClick={() => setWho('NJR')}>NJR bought it<span>adds to parts on hand and to Expenses</span></button>
+            <button type="button" aria-pressed={who === 'Client'} onClick={() => setWho('Client')}>The client bought it<span>Parts list and a job only, no expense</span></button>
+          </div>
+          {who === 'Client' && (
+            <div className="field" style={{ marginTop: 10 }}><label htmlFor="pi-job">Put these parts on which job?</label>
+              <select id="pi-job" value={jobId} onChange={(e) => setJobId(e.target.value)}>
+                <option value="">No job yet (Parts list only)</option>
+                {jobs.map((j) => <option key={j.id} value={j.id}>{j.invoice_no ? `${j.invoice_no} (invoice)` : j.quote_no} · {j.customer_company || j.customer} · {j.title}</option>)}
+              </select></div>)}
+          <div className="fgrid pi-head" style={{ marginTop: 12 }}>
+            <div className="field"><label htmlFor="pi-sup">Supplier{who === 'Client' ? ' (optional)' : ''}</label><input id="pi-sup" value={f.supplier} onChange={(e) => setF({ ...f, supplier: e.target.value })} /></div>
             <div className="field"><label htmlFor="pi-no">Invoice no.</label><input id="pi-no" value={f.invoice_no} onChange={(e) => setF({ ...f, invoice_no: e.target.value })} /></div>
             <div className="field"><label htmlFor="pi-date">Date</label><input id="pi-date" type="date" value={f.invoice_date} onChange={(e) => setF({ ...f, invoice_date: e.target.value })} /></div>
-            <div className="field"><label htmlFor="pi-m">Paid by</label><select id="pi-m" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{PAY_METHODS.map((m) => <option key={m}>{m}</option>)}</select></div>
+            {who !== 'Client' && <div className="field"><label htmlFor="pi-m">Paid by</label><select id="pi-m" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>{PAY_METHODS.map((m) => <option key={m}>{m}</option>)}</select></div>}
           </div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', margin: '10px 0' }}>
             <label className="check"><input type="checkbox" checked={f.vatOn} onChange={(e) => setF({ ...f, vatOn: e.target.checked })} /> Supplier charged VAT</label>
@@ -149,7 +211,7 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
             </dl>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Add to stock and Expenses'}</button>
+            <button className="btn primary" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : who === 'Client' ? (jobId ? 'Add to Parts and the job' : 'Add to the Parts list') : who === 'NJR' ? 'Add to parts on hand and Expenses' : 'Choose who bought it'}</button>
             <button className="btn ghost" type="button" disabled={busy} onClick={onClose}>Cancel</button>
           </div>
         </>}

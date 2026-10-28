@@ -458,3 +458,10 @@ tr.picked td{background:rgba(244,122,31,.08)}
 .lines-tbl input.money{width:96px}
 .lines-tbl td,.lines-tbl th{padding-left:8px;padding-right:8px}
 .menu-more > div{white-space:nowrap}
+.who-bought{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-top:12px}
+.who-bought > b{flex-basis:100%}
+.who-bought button{flex:1;min-width:200px;text-align:left;background:var(--panel-2);border:2px solid var(--line);border-radius:8px;padding:12px 14px;color:var(--fg);cursor:pointer;font:inherit;font-weight:700}
+.who-bought button span{display:block;font-weight:400;font-size:.85rem;color:var(--muted);margin-top:2px}
+.who-bought button[aria-pressed="true"]{border-color:var(--accent);background:rgba(244,122,31,.12)}
+.pi-head{grid-template-columns:repeat(4,1fr)}
+@media (max-width:760px){.pi-head{grid-template-columns:1fr 1fr}}
