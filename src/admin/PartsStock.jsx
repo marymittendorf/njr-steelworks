@@ -19,7 +19,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
   const [showBuys, setShowBuys] = useState(false)
   const [adding, setAdding] = useState(null)
 
-  const loadBuys = () => supabase.from('purchases').select('*, purchase_lines(description, qty, unit_cost)').order('invoice_date', { ascending: false }).limit(50)
+  const loadBuys = () => supabase.from('purchases').select('*, purchase_lines(id, description, qty, unit_cost)').order('invoice_date', { ascending: false }).limit(50)
     .then(({ data, error }) => { setPurchases(data || []); if (error) setError(error) })
   useEffect(() => { loadBuys() }, [])
 
@@ -41,6 +41,13 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
     await supabase.from('purchase_lines').update({ description: name }).eq('price_id', p.id)
     await (syncFromPrices || reload)(); loadBuys()
     toast(`Renamed to ${name}`)
+  }
+
+  // Fix what the slip reader got wrong on an item line.
+  async function saveLine(l, description) {
+    const { error } = await supabase.from('purchase_lines').update({ description }).eq('id', l.id)
+    if (error) { setError(error); return }
+    loadBuys(); toast('Item updated')
   }
 
   async function addItem(e) {
@@ -121,7 +128,10 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
             <tr key={b.id}>
               <td className="num">{shortDate(b.invoice_date)}</td>
               <td>{b.supplier}{b.bought_by === 'Client' && <span className="pill st-New" style={{ marginLeft: 6 }}>Client bought</span>}{b.invoice_no && <div className="hint">{b.invoice_no}</div>}</td>
-              <td className="hint">{(b.purchase_lines || []).map((l) => `${n(l.qty)} × ${l.description}`).join(', ')}</td>
+              <td>{(b.purchase_lines || []).map((l) => (
+                <div key={l.id} className="buy-line"><span className="hint">{n(l.qty)} ×</span>
+                  <input key={l.description} aria-label="Item description" defaultValue={l.description}
+                    onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== l.description && saveLine(l, e.target.value.trim())} /></div>))}</td>
               <td className="r num">{money(b.amount_excl)}</td><td className="r num hint">{money(b.vat)}</td><td className="r num"><b>{money(b.total)}</b></td>
               <td>{b.file_path ? <button className="linkbtn" type="button" onClick={() => openInvoice(b.file_path)}>View</button> : '—'}</td>
             </tr>))}</tbody>

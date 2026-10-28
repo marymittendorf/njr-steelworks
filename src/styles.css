@@ -475,3 +475,6 @@ tr.picked td{background:rgba(244,122,31,.08)}
   .pi-items td input.qty,.pi-items td input.money{width:100%;text-align:left}
   .pi-items td:nth-child(4)::before{content:'Line excl. VAT ';color:var(--muted);font-size:.8rem}
 }
+
+.buy-line{display:flex;gap:6px;align-items:center;margin:2px 0}
+.buy-line input{flex:1;min-width:160px}
