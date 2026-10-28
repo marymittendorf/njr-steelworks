@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { addDays, money, money0, shortDate } from '../format.js'
-import { Loading, ErrorNote, BillTo, matches } from './ui.jsx'
+import { Loading, ErrorNote, BillTo, matches, openStored } from './ui.jsx'
 import QuoteDoc, { DocPaper } from './QuoteDoc.jsx'
 import JobCard from './JobCard.jsx'
 
@@ -122,10 +122,7 @@ function InvoicePane({ job, jobs, settings, prices, me, toast, go, onBack, onCha
   }
   useEffect(() => { load() }, [job.id, job.amount_paid])
 
-  async function openProof(path) {
-    const { data } = await supabase.storage.from('payment-proofs').createSignedUrl(path, 300)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
-  }
+  function openProof(path) { openStored('payment-proofs', path) }
   async function removePayment(p) {
     const { error } = await supabase.from('payments').delete().eq('id', p.id)
     if (error) { setError(error); return }

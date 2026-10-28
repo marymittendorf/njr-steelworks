@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, money0, shortDate } from '../format.js'
-import { ErrorNote, matches } from './ui.jsx'
+import { ErrorNote, matches, openStored } from './ui.jsx'
 import PurchaseImport from './PurchaseImport.jsx'
 
 const blank = { id: '', name: '', unit: 'each', cost: '', kg: '', qty: '' }
@@ -30,6 +30,19 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
     toast(msg)
   }
 
+  // New name everywhere the part shows: the Parts list, job cards that list it, and the uploaded slips' item lines.
+  async function rename(p, name) {
+    const { error } = await supabase.from('prices').update({ name }).eq('id', p.id)
+    if (error) { setError(error); return }
+    const { data: jobs } = await supabase.from('jobs').select('id, mats').contains('mats', [{ id: p.id }])
+    for (const j of jobs || []) {
+      await supabase.from('jobs').update({ mats: j.mats.map((m) => (m.id === p.id ? { ...m, name } : m)) }).eq('id', j.id)
+    }
+    await supabase.from('purchase_lines').update({ description: name }).eq('price_id', p.id)
+    await (syncFromPrices || reload)(); loadBuys()
+    toast(`Renamed to ${name}`)
+  }
+
   async function addItem(e) {
     e.preventDefault()
     const id = (adding.id.trim() || adding.name).toLowerCase().replace(/[^a-z0-9_]+/g, '').slice(0, 24)
@@ -41,10 +54,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
     setAdding(null); setError(null); await reload(); toast('Item added')
   }
 
-  async function openInvoice(path) {
-    const { data } = await supabase.storage.from('expense-docs').createSignedUrl(path, 300)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
-  }
+  function openInvoice(path) { openStored('expense-docs', path) }
 
   const value = prices.reduce((a, p) => a + n(p.qty_on_hand) * n(p.cost), 0)
   const needle = q.trim().toLowerCase()
@@ -81,7 +91,8 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
         <thead><tr><th>Item</th><th>Unit</th><th className="r">On hand</th><th className="r">Cost excl. VAT</th><th className="r">VAT {vat}%</th><th className="r">Cost incl. VAT</th><th className="r">Value excl. VAT</th><th className="r">Mass (kg)</th><th>In use</th></tr></thead>
         <tbody>{shown.map((p) => (
           <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
-            <td>{p.name} <span className="hint">· {p.id}</span>{p.notes && <div className="hint" style={{ fontSize: '.8rem' }}>{p.notes}</div>}</td>
+            <td><input key={`n${p.name}`} className="part-name" aria-label={`Name of ${p.name}`} defaultValue={p.name}
+              onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== p.name && rename(p, e.target.value.trim())} /> <span className="hint">· {p.id}</span>{p.notes && <div className="hint" style={{ fontSize: '.8rem' }}>{p.notes}</div>}</td>
             <td className="hint">{p.unit}</td>
             <td className="r"><input className="qty num" aria-label={`On hand: ${p.name}`} type="number" step="0.5" defaultValue={n(p.qty_on_hand)}
               onBlur={(e) => n(e.target.value) !== n(p.qty_on_hand) && saveRow(p, { qty_on_hand: n(e.target.value) }, `${p.name}: ${n(e.target.value)} on hand`)} /></td>

@@ -3,7 +3,7 @@ import { supabase } from '../supabase.js'
 import { syncInvoiceTotals } from '../orders.js'
 import { customerLines, customPart, n } from '../costing.js'
 import { shortDate } from '../format.js'
-import { ErrorNote, PartPicker } from './ui.jsx'
+import { ErrorNote, PartPicker, openStored } from './ui.jsx'
 import PartsPickList from './PartsPickList.jsx'
 
 // Every part a job needs: its own parts plus the parts inside its products (e.g. a 2 m³ skip).
@@ -33,10 +33,7 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
     supabase.from('purchases').select('id, supplier, invoice_no, invoice_date, file_path').eq('job_id', job.id).order('invoice_date')
       .then(({ data }) => setSlips(data || []))
   }, [job.id])
-  async function openSlip(path) {
-    const { data } = await supabase.storage.from('expense-docs').createSignedUrl(path, 300)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
-  }
+  function openSlip(path) { openStored('expense-docs', path) }
   const rows = jobParts({ mats, products })
   const changedSupplier = mats.some((m, i) => n(m.cost) > 0 && m.supplied_by !== ((job.mats[i] || {}).supplied_by || 'NJR'))
   const work = job.rates ? customerLines(job) : []

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { calc, customerDoc, legacyToLine, markupsFrom, n, ownLine, partLine, productLine, RATE_LINES, rateLine, ratesFrom, STATUSES } from '../costing.js'
 import { money, money0 } from '../format.js'
-import { Loading, ErrorNote, Picker, PartPicker } from './ui.jsx'
+import { Loading, ErrorNote, Picker, PartPicker, openStored } from './ui.jsx'
 import QuoteDoc from './QuoteDoc.jsx'
 import JobFile from './JobFile.jsx'
 import WorkOutPrice from './WorkOutPrice.jsx'
@@ -138,7 +138,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
     <>
       <div className="pagehead">
         <div><h1>{job.invoice_no ? 'Edit invoice' : 'Quote'}</h1><p>{job.invoice_no ? `${job.invoice_no} · from quote ${job.quote_no}` : job.quote_no || 'New quote, not saved yet'}
-          {job.source_pdf_path && <> · <button className="linkbtn" type="button" onClick={async () => { const { data } = await supabase.storage.from('job-docs').createSignedUrl(job.source_pdf_path, 300); if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener') }}>Original PDF quote</button></>}</p></div>
+          {job.source_pdf_path && <> · <button className="linkbtn" type="button" onClick={() => openStored('job-docs', job.source_pdf_path)}>Original PDF quote</button></>}</p></div>
         {job.invoice_no
           ? <button className="btn small" type="button" onClick={() => go('invoices', { jobId: job.id })}>Back to invoice</button>
           : <button className="btn small" type="button" onClick={() => go('cost', null)}>New quote</button>}

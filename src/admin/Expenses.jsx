@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { n } from '../costing.js'
 import { money, shortDate } from '../format.js'
-import { Loading, ErrorNote, SearchBox, matches } from './ui.jsx'
+import { Loading, ErrorNote, SearchBox, matches, openStored } from './ui.jsx'
 import ExpenseForm, { CATEGORIES, uploadExpenseDoc } from './ExpenseForm.jsx'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -83,10 +83,7 @@ export default function Expenses({ toast, me }) {
     load()
   }
 
-  async function openDoc(path) {
-    const { data } = await supabase.storage.from('expense-docs').createSignedUrl(path, 300)
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
-  }
+  function openDoc(path) { openStored('expense-docs', path) }
 
   async function attachDoc(exp, f) {
     try {

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { supabase } from '../supabase.js'
 
 export function Pill({ status }) {
   return <span className={`pill st-${status.replace(/ /g, '-')}`}>{status}</span>
@@ -128,4 +129,13 @@ export function matches(q, ...values) {
 
 export function SearchBox({ q, setQ, label = 'Search', style }) {
   return <input type="search" aria-label={label} placeholder={label} value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 240, ...style }} />
+}
+
+// Opens a stored file (slip, proof of payment, PDF) in a new tab. The tab is opened straight away, while the click
+// still counts, then pointed at the file: opening it only after the link comes back gets blocked as a pop-up.
+export async function openStored(bucket, path) {
+  const tab = window.open('', '_blank')
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 300)
+  if (!data?.signedUrl) { tab?.close(); alert(`Could not open the file: ${error?.message || 'not found'}`); return }
+  if (tab) { tab.opener = null; tab.location.href = data.signedUrl } else window.location.href = data.signedUrl
 }

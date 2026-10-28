@@ -163,6 +163,7 @@ td.r,th.r{text-align:right}
 td input,td select{padding:6px 8px}
 td input.qty{width:80px;text-align:right}
 td input.money{width:110px;text-align:right}
+td input.part-name{width:100%;min-width:200px;font-weight:600}
 tr.clickable{cursor:pointer}
 tr.clickable:hover td{background:var(--panel-2)}
 
