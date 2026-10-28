@@ -104,3 +104,18 @@ test('description printed twice is read once', () => {
   assert.equal(items[0].desc, 'Services Fees')
   assert.equal(items[1].desc, 'Standard Hosting - njr.co.za')
 })
+
+test('phone photo of a JMR slip: codes dropped, qty/total columns, totals and footer skipped', () => {
+  const items = parseInvoiceLines([
+    'sty Tow Hitch 50mm - 2700kg (Ball Type) 1.00 4,350.00 GEOO001 4,350.00',
+    'JP114 Goose Neck 50mm 1.00 34500 GEOO0OY 345.00',
+    'SK001-45 Hanger Set 45 1.00 75.00 GEOOQ01 75.00',
+    'I have read the Return Policy and received the products in good order Tax R 704.25',
+    'Tow R 5,399.25',
+    'otal (Incl) R 5,399.25',
+  ])
+  assert.equal(items.length, 3)
+  assert.deepEqual(items.map((i) => [i.qty, i.unit]), [[1, 4350], [1, 345], [1, 75]])
+  assert.equal(items[1].desc, 'Goose Neck 50mm')
+  assert.equal(items[2].desc, 'Hanger Set 45')
+})

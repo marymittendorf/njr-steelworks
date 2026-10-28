@@ -149,7 +149,8 @@ function undouble(text) {
 // Supplier invoice / till slip → item lines { desc, qty, unit, total }.
 // Looks for lines with a quantity and/or two money amounts (unit price and line total).
 // Staff check every line before it goes into stock, so this aims to get most lines right.
-const NOT_ITEM = /\b(sub\s*-?\s*total|total|vat|tax|balance|change|tendered|cash|card|eft|amount\s+due|discount|rounding|deposit|paid|bank|branch|account|tel|fax|invoice|date|page)\b/i
+// ("otal", "incl", "excl": totals where the photo lost a letter; policy/received/signed: the slip footer.)
+const NOT_ITEM = /\b(sub\s*-?\s*total|total|otal|incl|excl|vat|tax|balance|change|tendered|cash|card|eft|amount\s+due|discount|rounding|deposit|paid|bank|branch|account|tel|fax|invoice|date|page|policy|received|signed|warranty)\b/i
 export function parseInvoiceLines(lines) {
   const out = []
   for (const raw of lines) {
@@ -163,13 +164,18 @@ export function parseInvoiceLines(lines) {
     const qm = l.match(/^\s*(\d{1,4}(?:[.,]\d{1,2})?)\s*(?:x|ea|each|pcs?|no|units?)?\s+(?=[A-Za-z])/i) || l.match(/\b[x×]\s*(\d{1,4}(?:[.,]\d{1,2})?)\b/i)
     let qty = qm ? Number(qm[1].replace(',', '.')) : null
     let unit = unitGiven
+    // "1.00  345.00" (qty and line total, price column unreadable): a small whole first number is the qty.
+    if (!qty && amts.length === 2 && Number.isInteger(unitGiven) && unitGiven >= 1 && unitGiven <= 50 && total / unitGiven > 50) { qty = unitGiven; unit = total / qty }
     if (qty && !unit) unit = Math.round((total / qty) * 100) / 100
     if (!qty && unit) { const q = total / unit; qty = Math.abs(q - Math.round(q * 100) / 100) < 0.02 ? Math.round(q * 100) / 100 : 1 }
     if (!qty) { qty = 1; unit = total }
     if (unit && Math.abs(unit * qty - total) > Math.max(1, total * 0.02)) { unit = Math.round((total / qty) * 100) / 100 } // keep qty × unit = total
     const desc = l.replace(MONEY, ' ').replace(/^\s*\d{1,4}(?:[.,]\d{1,2})?\s*(?:x|ea|each|pcs?|no|units?)?\s+/i, '')
-      .replace(/\b[x×]\s*\d{1,4}(?:[.,]\d{1,2})?\b/gi, ' ').replace(/\b[A-Z0-9]{2,}-?\d{3,}\b/g, ' ').replace(/\s{2,}/g, ' ').trim()
-    if (desc.length < 3 || !/[a-z]{3}/i.test(desc)) continue
+      .replace(/\b[x×]\s*\d{1,4}(?:[.,]\d{1,2})?\b/gi, ' ').replace(/\b[A-Z0-9]{2,}-?\d{3,}\b/g, ' ')
+      .replace(/\b[A-Z]{2,}\d[A-Z0-9]*[^\s\w]?/g, ' ') // item and store codes (TH014, GEO001 read as GEOO0OY}); not sizes like 50X50X2 or 115MM
+      .replace(/^[^A-Za-z]+/, '').replace(/\s{2,}/g, ' ').trim()
+    // A lone short word ("Tow" from a half-read "Total") isn't an item.
+    if (desc.length < 3 || !/[a-z]{3}/i.test(desc) || (!/\s/.test(desc) && desc.length < 5)) continue
     out.push({ desc: undouble(desc), qty, unit: Math.round(unit * 100) / 100, total })
   }
   return out

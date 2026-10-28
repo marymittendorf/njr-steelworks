@@ -465,3 +465,12 @@ tr.picked td{background:rgba(244,122,31,.08)}
 .who-bought button[aria-pressed="true"]{border-color:var(--accent);background:rgba(244,122,31,.12)}
 .pi-head{grid-template-columns:repeat(4,1fr)}
 @media (max-width:760px){.pi-head{grid-template-columns:1fr 1fr}}
+/* Purchase upload on a phone: each item line becomes a small card */
+@media (max-width:760px){
+  .pi-items thead{display:none}
+  .pi-items tr{display:grid;grid-template-columns:1fr 1fr auto;gap:6px 8px;padding:10px;border-bottom:1px solid var(--line)}
+  .pi-items td{border:0;padding:0;display:block}
+  .pi-items td:first-child,.pi-items td:nth-child(5){grid-column:1/-1}
+  .pi-items td input.qty,.pi-items td input.money{width:100%;text-align:left}
+  .pi-items td:nth-child(4)::before{content:'Line excl. VAT ';color:var(--muted);font-size:.8rem}
+}

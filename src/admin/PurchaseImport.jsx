@@ -43,6 +43,7 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
       slip = parseSlip(lines)
       items = parseInvoiceLines(lines)
     } catch (err) { setError(`${err.message} Type the items in below.`) }
+    if (!items.length) setError("We couldn't read the items on this photo. Type them in below, or take a straighter, closer photo in good light (the whole slip, flat, no shadow).")
     const sum = items.reduce((a, i) => a + i.total, 0)
     // Line prices include VAT when they add up to the invoice total rather than the total less VAT.
     const inclVat = slip.total !== null && slip.vat > 0 && Math.abs(sum - slip.total) < Math.abs(sum - (slip.total - slip.vat))
@@ -187,13 +188,14 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
             <label className="check"><input type="checkbox" checked={f.vatOn} onChange={(e) => setF({ ...f, vatOn: e.target.checked })} /> Supplier charged VAT</label>
             {f.vatOn && <label className="check"><input type="checkbox" checked={f.inclVat} onChange={(e) => setF({ ...f, inclVat: e.target.checked })} /> Item prices on the invoice include VAT</label>}
           </div>
-          <div className="tbl-wrap"><table>
+          {f.items.some((it) => it.desc) && <p className="hint" style={{ margin: '4px 0 8px' }}>Read from the photo: check each line before saving.</p>}
+          <div className="tbl-wrap"><table className="pi-items">
             <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each{f.inclVat ? ' (incl. VAT)' : ''}</th><th className="r">Line excl. VAT</th><th>Add to</th><th>Cost</th><th /></tr></thead>
             <tbody>{f.items.map((it, i) => (
               <tr key={i}>
-                <td><input aria-label="Item" value={it.desc} onChange={(e) => set(i, { desc: e.target.value, stock: it.stock || findStock(e.target.value) })} /></td>
-                <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="0" step="0.5" value={it.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
-                <td className="r"><input className="money num" aria-label="Price each" type="number" min="0" step="0.01" value={it.unit} onChange={(e) => set(i, { unit: e.target.value })} /></td>
+                <td><input aria-label="Item" placeholder="What it is" value={it.desc} onChange={(e) => set(i, { desc: e.target.value, stock: it.stock || findStock(e.target.value) })} /></td>
+                <td className="r"><input className="qty num" aria-label="Quantity" placeholder="Qty" type="number" min="0" step="0.5" value={it.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
+                <td className="r"><input className="money num" aria-label="Price each" placeholder="Price each" type="number" min="0" step="0.01" value={it.unit} onChange={(e) => set(i, { unit: e.target.value })} /></td>
                 <td className="r num">{money(lineExcl(it))}</td>
                 <td><select aria-label="Add to which item" value={it.stock} onChange={(e) => set(i, { stock: e.target.value })}>
                   <option value="">New item: {it.desc ? it.desc.slice(0, 30) : '…'}</option>

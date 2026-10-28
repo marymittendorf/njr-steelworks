@@ -47,12 +47,45 @@ async function pdfLines(file) {
   return toLines(items)
 }
 
+// Phone photos come in all sizes (WhatsApp shrinks them; cameras make them huge), shadowy and often
+// sideways. Before reading: resize so the long side is about 3 600 px (small slip text gets big enough
+// to read; tested on real NJR slips), greyscale + a little more contrast, and turn by `turn` quarter-turns.
+async function prepare(file, turn = 0) {
+  const img = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  const scale = Math.min(4, 3600 / Math.max(img.width, img.height))
+  const w = Math.round(img.width * scale), h = Math.round(img.height * scale)
+  const side = turn % 2 === 1
+  const canvas = document.createElement('canvas')
+  canvas.width = side ? h : w
+  canvas.height = side ? w : h
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.filter = 'grayscale(1) contrast(1.3)'
+  ctx.translate(canvas.width / 2, canvas.height / 2)
+  ctx.rotate((turn * Math.PI) / 2)
+  ctx.drawImage(img, -w / 2, -h / 2, w, h)
+  img.close?.()
+  return canvas
+}
+
 async function imageLines(file, onProgress) {
   await loadScript(TESSERACT)
-  const { data } = await window.Tesseract.recognize(file, 'eng', {
+  const worker = await window.Tesseract.createWorker('eng', 1, {
     logger: (m) => m.status === 'recognizing text' && onProgress?.(Math.round(m.progress * 100)),
   })
-  return data.text.split('\n').map((l) => l.trim()).filter(Boolean)
+  try {
+    // Upright first; if that reads badly (sideways photo), try a quarter turn each way and keep the best.
+    let best = (await worker.recognize(await prepare(file, 0))).data
+    if (best.confidence < 55) {
+      for (const turn of [1, 3]) {
+        const d = (await worker.recognize(await prepare(file, turn))).data
+        if (d.confidence > best.confidence) best = d
+      }
+    }
+    return best.text.split('\n').map((l) => l.trim()).filter(Boolean)
+  } finally {
+    await worker.terminate()
+  }
 }
 
 // Returns { lines, scanned }. scanned=true means a PDF with no text layer (a scan),
