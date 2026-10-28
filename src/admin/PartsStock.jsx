@@ -108,7 +108,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
           <tbody>{purchases.map((b) => (
             <tr key={b.id}>
               <td className="num">{shortDate(b.invoice_date)}</td>
-              <td>{b.supplier}{b.invoice_no && <div className="hint">{b.invoice_no}</div>}</td>
+              <td>{b.supplier}{b.bought_by === 'Client' && <span className="pill st-New" style={{ marginLeft: 6 }}>Client bought</span>}{b.invoice_no && <div className="hint">{b.invoice_no}</div>}</td>
               <td className="hint">{(b.purchase_lines || []).map((l) => `${n(l.qty)} × ${l.description}`).join(', ')}</td>
               <td className="r num">{money(b.amount_excl)}</td><td className="r num hint">{money(b.vat)}</td><td className="r num"><b>{money(b.total)}</b></td>
               <td>{b.file_path ? <button className="linkbtn" type="button" onClick={() => openInvoice(b.file_path)}>View</button> : '—'}</td>

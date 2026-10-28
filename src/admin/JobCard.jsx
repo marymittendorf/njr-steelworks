@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { syncInvoiceTotals } from '../orders.js'
 import { customerLines, customPart, n } from '../costing.js'
@@ -28,6 +28,15 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
   const [picking, setPicking] = useState(null) // 'NJR' | 'Client': choosing several parts at once
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  const [slips, setSlips] = useState([]) // purchase slips for parts on this job (client-bought ones are linked to it)
+  useEffect(() => {
+    supabase.from('purchases').select('id, supplier, invoice_no, invoice_date, file_path').eq('job_id', job.id).order('invoice_date')
+      .then(({ data }) => setSlips(data || []))
+  }, [job.id])
+  async function openSlip(path) {
+    const { data } = await supabase.storage.from('expense-docs').createSignedUrl(path, 300)
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener')
+  }
   const rows = jobParts({ mats, products })
   const changedSupplier = mats.some((m, i) => n(m.cost) > 0 && m.supplied_by !== ((job.mats[i] || {}).supplied_by || 'NJR'))
   const work = job.rates ? customerLines(job) : []
@@ -117,6 +126,7 @@ export default function JobCard({ job, prices = [], me, toast, onClose, onSaved 
           })}
           {!rows.length && <tr><td colSpan="5" className="hint">No parts listed. Add the ones this job needs below.</td></tr>}</tbody>
         </table></div>
+        {slips.length > 0 && <p className="hint no-print">Slips: {slips.map((s, k) => <span key={s.id}>{k > 0 && ' · '}{s.supplier}{s.invoice_no ? ` ${s.invoice_no}` : ''} ({shortDate(s.invoice_date)}) {s.file_path ? <button className="linkbtn" type="button" onClick={() => openSlip(s.file_path)}>View</button> : 'no photo'}</span>)}</p>}
         {changedSupplier && job.invoice_no && <p className="hint" style={{ color: 'var(--warn)' }}>Changing who supplies a charged part changes the invoice total.</p>}
 
         <div className="no-print" style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>

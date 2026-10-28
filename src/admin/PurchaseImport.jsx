@@ -149,6 +149,16 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
         const { error } = await supabase.from('jobs').update({ mats: [...(job.mats || []), ...onJob], updated_at: new Date().toISOString() }).eq('id', job.id)
         if (error) throw error
       }
+      // Keep the slip itself, marked as client-bought (no expense), so it can be opened from the job card and Purchases.
+      const file_path = file ? await uploadExpenseDoc(file) : null
+      const { data: pur, error: e2 } = await supabase.from('purchases').insert({
+        supplier: f.supplier.trim() || 'Not given', invoice_no: f.invoice_no.trim() || null, invoice_date: f.invoice_date,
+        amount_excl: excl, vat, file_path, bought_by: 'Client', job_id: job?.id || null, recorded_by: me?.name || null,
+      }).select('id').single()
+      if (e2) throw e2
+      const { error: e3 } = await supabase.from('purchase_lines').insert(items.map((it, k) => ({ purchase_id: pur.id, price_id: onJob[k].id,
+        description: it.desc.trim(), qty: n(it.qty), unit_cost: r2(exclUnit(it)), line_total: lineExcl(it) })))
+      if (e3) throw e3
       toast(`${items.length} part${items.length === 1 ? '' : 's'} added to the Parts list${job ? ` and to ${job.invoice_no || job.quote_no} as supplied by the client` : ''}`)
       onSaved()
     } catch (err) { setError(err) } finally { setBusy(false) }
