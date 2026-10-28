@@ -6,6 +6,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const MODEL = Deno.env.get('GEMINI_MODEL') || 'gemini-flash-latest'
+const FALLBACK = Deno.env.get('GEMINI_FALLBACK_MODEL') || 'gemini-flash-lite-latest'
 const MAX_BYTES = 8 * 1024 * 1024
 
 const cors = {
@@ -69,19 +70,25 @@ Deno.serve(async (req) => {
   if (typeof data !== 'string' || !/^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/.test(mime || '')) return json({ error: 'Send a photo or a PDF.' }, 400)
   if (data.length * 0.75 > MAX_BYTES) return json({ error: 'That file is too big. Take the photo again or send a smaller PDF.' }, 413)
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify({
-      contents: [{ parts: [{ inline_data: { mime_type: mime, data } }, { text: PROMPT }] }],
-      generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
-    }),
+  const body = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: mime, data } }, { text: PROMPT }] }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
   })
-  const out = await res.json().catch(() => null)
+  // The free tier is often "busy" (503) or briefly over its limit (429): wait and retry, then try the lighter model.
+  let res = new Response(), out
+  for (const [model, wait] of [[MODEL, 0], [MODEL, 2000], [FALLBACK, 0], [FALLBACK, 3000]] as const) {
+    if (wait) await new Promise((r) => setTimeout(r, wait))
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body,
+    })
+    out = await res.json().catch(() => null)
+    if (res.ok || ![429, 500, 503].includes(res.status)) break
+    console.error('Gemini', model, res.status, 'retrying')
+  }
   if (!res.ok) {
     console.error('Gemini', res.status, JSON.stringify(out))
-    const busy = res.status === 429
-    return json({ error: busy ? 'The slip reader is busy (free limit reached). Wait a minute and try again.' : 'The slip reader had a problem. Try again, or type the items in.' }, busy ? 429 : 502)
+    const busy = [429, 503].includes(res.status)
+    return json({ error: busy ? "Google's slip reader is busy right now. Wait a minute and upload the slip again." : 'The slip reader had a problem. Try again, or type the items in.' }, busy ? 429 : 502)
   }
   const text = out?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || ''
   try {

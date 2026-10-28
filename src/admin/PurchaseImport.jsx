@@ -17,6 +17,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || `
 export default function PurchaseImport({ manual, prices, me, toast, onClose, onSaved }) {
   const [file, setFile] = useState(null)
   const [reading, setReading] = useState(null)
+  const [backup, setBackup] = useState(null) // why the basic in-browser reader was used instead of AI
   const [error, setError] = useState(null)
   const [f, setF] = useState(() => (manual ? { supplier: '', invoice_date: today(), invoice_no: '', method: 'EFT', docTotal: null, docVat: 0, inclVat: false, vatOn: true, items: [{ desc: '', qty: 1, unit: '', stock: '', updateCost: true }] } : null))
   const [busy, setBusy] = useState(false)
@@ -35,7 +36,7 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
   async function pick(e) {
     const chosen = e.target.files[0]
     if (!chosen) return
-    setFile(chosen); setError(null); setReading('Reading the invoice…')
+    setFile(chosen); setError(null); setBackup(null); setReading('Reading the invoice…')
     let slip = { supplier: '', date: null, invoice_no: '', total: null, vat: 0 }
     let items = []
     let inclVat = null
@@ -51,6 +52,7 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
       inclVat = !!ai.prices_include_vat
     } catch (err) {
       aiNote = err.notConfigured ? null : err.message
+      setBackup(aiNote)
       try {
         const { lines } = await readDocument(chosen, (pct) => setReading(`Reading the photo… ${pct}%`))
         slip = parseSlip(lines)
@@ -212,7 +214,9 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
             <label className="check"><input type="checkbox" checked={f.vatOn} onChange={(e) => setF({ ...f, vatOn: e.target.checked })} /> Supplier charged VAT</label>
             {f.vatOn && <label className="check"><input type="checkbox" checked={f.inclVat} onChange={(e) => setF({ ...f, inclVat: e.target.checked })} /> Item prices on the invoice include VAT</label>}
           </div>
-          {f.items.some((it) => it.desc) && <p className="hint" style={{ margin: '4px 0 8px' }}>Read from the photo: check each line before saving.</p>}
+          {f.items.some((it) => it.desc) && (backup
+            ? <p className="hint" style={{ margin: '4px 0 8px', color: 'var(--warn)' }}>{backup} These lines come from the basic reader and may be wrong: close and upload again in a minute, or check each line carefully.</p>
+            : <p className="hint" style={{ margin: '4px 0 8px' }}>Read from the photo: check each line before saving.</p>)}
           <div className="tbl-wrap"><table className="pi-items">
             <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each{f.inclVat ? ' (incl. VAT)' : ''}</th><th className="r">Line excl. VAT</th><th>Add to</th><th>Cost</th><th /></tr></thead>
             <tbody>{f.items.map((it, i) => (
