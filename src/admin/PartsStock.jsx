@@ -101,9 +101,10 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
       </table></div>
       <p className="hint">Change "On hand" after a stock count or when parts are used. The website's instant price calculator uses items with these short codes: {CALC_CODES}.</p>
 
-      {purchases.length > 0 && <>
-        <div className="block-head"><h3>Purchases</h3><button className="linkbtn" type="button" onClick={() => setShowBuys(!showBuys)}>{showBuys ? 'Hide' : `Show ${purchases.length}`}</button></div>
-        {showBuys && <div className="tbl-wrap"><table>
+      <>
+        <div className="block-head"><h3>Purchases <span className="hint">(uploaded slips)</span></h3>{purchases.length > 0 && <button className="linkbtn" type="button" onClick={() => setShowBuys(!showBuys)}>{showBuys ? 'Hide' : `Show ${purchases.length}`}</button>}</div>
+        {!purchases.length && <p className="hint">No slips uploaded yet. Use "Upload purchase invoice" above; each slip is listed here with a View link.</p>}
+        {showBuys && purchases.length > 0 && <div className="tbl-wrap"><table>
           <thead><tr><th>Date</th><th>Supplier</th><th>Items</th><th className="r">Excl. VAT</th><th className="r">VAT</th><th className="r">Total</th><th>Invoice</th></tr></thead>
           <tbody>{purchases.map((b) => (
             <tr key={b.id}>
@@ -114,7 +115,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
               <td>{b.file_path ? <button className="linkbtn" type="button" onClick={() => openInvoice(b.file_path)}>View</button> : '—'}</td>
             </tr>))}</tbody>
         </table></div>}
-      </>}
+      </>
 
       {importing && <PurchaseImport manual={importing === 'manual'} prices={prices} me={me} toast={toast} onClose={() => setImporting(null)}
         onSaved={async () => { setImporting(null); await reload(); loadBuys() }} />}
