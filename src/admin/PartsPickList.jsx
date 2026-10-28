@@ -38,7 +38,7 @@ export default function PartsPickList({ prices, mats, onApply, onClose, title = 
           <button className="btn small" type="button" disabled={!shown.length} onClick={() => tickShown(!allTicked)}>{allTicked ? 'Untick all shown' : `Tick all shown (${shown.length})`}</button>
         </div>
         <div className="tbl-wrap" style={{ maxHeight: '55vh', overflowY: 'auto' }}><table>
-          <thead><tr><th style={{ width: 40 }} /><th>Part</th><th className="r">Each</th><th className="r">Qty</th></tr></thead>
+          <thead><tr><th style={{ width: 40 }} /><th>Part</th><th className="r">Each excl. VAT</th><th className="r">Incl. VAT</th><th className="r">Qty</th></tr></thead>
           <tbody>{shown.map((p) => {
             const on = sel.has(p.id)
             return (
@@ -46,10 +46,11 @@ export default function PartsPickList({ prices, mats, onApply, onClose, title = 
                 <td><input type="checkbox" checked={on} onChange={(e) => tick(p.id, e.target.checked)} aria-label={`Use ${p.name}`} style={{ width: 20, height: 20 }} /></td>
                 <td onClick={() => tick(p.id, !on)} style={{ cursor: 'pointer' }}>{p.name}<span className="hint"> · {p.unit}</span></td>
                 <td className="r num" style={{ color: n(p.cost) ? undefined : 'var(--warn)' }}>{n(p.cost) ? money(p.cost) : 'no price'}</td>
+                <td className="r num hint">{n(p.cost) ? money(n(p.cost) * 1.15) : ''}</td>
                 <td className="r">{on && <input className="qty num" aria-label={`How many ${p.name}`} type="number" min="0" step="0.5" value={sel.get(p.id)} onChange={(e) => setQty(p.id, e.target.value)} />}</td>
               </tr>)
           })}
-          {!shown.length && <tr><td colSpan="4" className="hint">No part matches "{q}". Add it under Stock first.</td></tr>}</tbody>
+          {!shown.length && <tr><td colSpan="5" className="hint">No part matches "{q}". Add it under Stock first.</td></tr>}</tbody>
         </table></div>
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="btn primary" type="button" onClick={apply}>

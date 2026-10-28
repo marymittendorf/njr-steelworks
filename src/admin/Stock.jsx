@@ -9,7 +9,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 const blankItem = { title: '', description: '', built_on: today(), asking_price: '' }
 
 // Finished trailers/skips in the yard. Stock builds from Orders arrive here by themselves.
-export default function Stock({ go, toast, prices, me, reload, syncFromPrices }) {
+export default function Stock({ go, toast, settings, prices, me, reload, syncFromPrices }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
   const [selling, setSelling] = useState(null) // { id, sold_to, sold_phone, sold_price, sold_on }
@@ -65,7 +65,7 @@ export default function Stock({ go, toast, prices, me, reload, syncFromPrices })
       </div>
       <ErrorNote error={error} />
 
-      <PartsStock q={q} prices={prices} reload={reload} syncFromPrices={syncFromPrices} me={me} toast={toast} />
+      <PartsStock q={q} settings={settings} prices={prices} reload={reload} syncFromPrices={syncFromPrices} me={me} toast={toast} />
 
       <div className="block-head"><h3 style={{ fontSize: '1.6rem' }}>Finished trailers &amp; skips</h3></div>
 
