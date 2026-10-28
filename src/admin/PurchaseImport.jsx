@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase.js'
 import { customPart, n } from '../costing.js'
 import { money } from '../format.js'
-import { readDocument } from '../docReader.js'
+import { readDocument, readSlipAI } from '../docReader.js'
 import { parseSlip, parseInvoiceLines } from '../docParse.js'
 import { uploadExpenseDoc, PAY_METHODS } from './ExpenseForm.jsx'
 import { ErrorNote } from './ui.jsx'
@@ -38,15 +38,29 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
     setFile(chosen); setError(null); setReading('Reading the invoice…')
     let slip = { supplier: '', date: null, invoice_no: '', total: null, vat: 0 }
     let items = []
+    let inclVat = null
+    let aiNote = null
+    // AI first (reads phone photos and till slips properly); the in-browser reader is the backup.
     try {
-      const { lines } = await readDocument(chosen, (pct) => setReading(`Reading the photo… ${pct}%`))
-      slip = parseSlip(lines)
-      items = parseInvoiceLines(lines)
-    } catch (err) { setError(`${err.message} Type the items in below.`) }
-    if (!items.length) setError("We couldn't read the items on this photo. Type them in below, or take a straighter, closer photo in good light (the whole slip, flat, no shadow).")
+      setReading('Reading the slip…')
+      const ai = await readSlipAI(supabase, chosen)
+      slip = { supplier: ai.supplier || '', date: /^\d{4}-\d\d-\d\d$/.test(ai.date || '') ? ai.date : null, invoice_no: ai.invoice_no || '',
+        total: n(ai.total) || null, vat: n(ai.vat) }
+      items = (ai.items || []).filter((i) => String(i.desc || '').trim())
+        .map((i) => ({ desc: i.desc.trim(), qty: n(i.qty) || 1, unit: n(i.unit_price) || r2(n(i.line_total) / (n(i.qty) || 1)), total: n(i.line_total) }))
+      inclVat = !!ai.prices_include_vat
+    } catch (err) {
+      aiNote = err.notConfigured ? null : err.message
+      try {
+        const { lines } = await readDocument(chosen, (pct) => setReading(`Reading the photo… ${pct}%`))
+        slip = parseSlip(lines)
+        items = parseInvoiceLines(lines)
+      } catch (err2) { setError(`${err2.message} Type the items in below.`) }
+    }
+    if (!items.length) setError(aiNote || "We couldn't read the items on this photo. Type them in below, or take a straighter, closer photo in good light (the whole slip, flat, no shadow).")
     const sum = items.reduce((a, i) => a + i.total, 0)
     // Line prices include VAT when they add up to the invoice total rather than the total less VAT.
-    const inclVat = slip.total !== null && slip.vat > 0 && Math.abs(sum - slip.total) < Math.abs(sum - (slip.total - slip.vat))
+    inclVat ??= slip.total !== null && slip.vat > 0 && Math.abs(sum - slip.total) < Math.abs(sum - (slip.total - slip.vat))
     setF({
       supplier: slip.supplier || '', invoice_date: slip.date || today(), invoice_no: slip.invoice_no || '', method: 'EFT',
       docTotal: slip.total, docVat: slip.vat || 0, inclVat, vatOn: (slip.vat || 0) > 0,

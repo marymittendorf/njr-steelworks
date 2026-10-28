@@ -88,6 +88,37 @@ async function imageLines(file, onProgress) {
   }
 }
 
+// Phone photo → a JPEG about 2 000 px on the long side, as base64 (small enough to send, big enough to read).
+async function shrink(file) {
+  const img = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  const scale = Math.min(1, 2000 / Math.max(img.width, img.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale)
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+  img.close?.()
+  return canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
+}
+const toBase64 = async (file) => {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+
+// Reads the slip with AI (the read-slip Edge Function, Google Gemini). Returns
+// { supplier, invoice_no, date, prices_include_vat, vat, total, items: [{ desc, qty, unit_price, line_total }] },
+// or throws (with .notConfigured when the key isn't set up yet) so the caller can fall back to readDocument.
+export async function readSlipAI(supabase, file) {
+  const pdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+  const body = pdf ? { mime: 'application/pdf', data: await toBase64(file) } : { mime: 'image/jpeg', data: await shrink(file) }
+  const { data, error } = await supabase.functions.invoke('read-slip', { body })
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null)
+    throw Object.assign(new Error(detail?.error || error.message), { notConfigured: !!detail?.notConfigured })
+  }
+  return data
+}
+
 // Returns { lines, scanned }. scanned=true means a PDF with no text layer (a scan),
 // which is then read with OCR like a photo.
 export async function readDocument(file, onProgress) {
