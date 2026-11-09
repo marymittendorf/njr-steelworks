@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase.js'
-import { calc, clientParts, customerDoc, customerLines } from '../costing.js'
+import { calc, clientParts, customerDoc, customerLines, discountLabel } from '../costing.js'
 import { addDays, money, shortDate } from '../format.js'
 import { BillTo } from './ui.jsx'
 
@@ -64,7 +64,8 @@ export function DocPaper({ job, settings, paperRef }) {
         <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
       </table></div>
       <div className="totals num">
-        <span>Subtotal</span><span>{money(t.excl)}</span>
+        <span>Subtotal</span><span>{money(t.subtotal ?? t.excl)}</span>
+        {t.discount > 0 && <><span>{discountLabel(job)}</span><span>−{money(t.discount)}</span><span>Total excl. VAT</span><span>{money(t.excl)}</span></>}
         <span>VAT {r.vat}%</span><span>{money(t.vat)}</span>
         <span className="grand">Total</span><span className="grand">{money(t.total)}</span>
         {!isInvoice && <><span className="muted">Deposit {r.deposit}% to book</span><span className="muted">{money(t.deposit)}</span></>}

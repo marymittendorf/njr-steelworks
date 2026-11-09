@@ -12,13 +12,13 @@ import { JOB_TYPES, ensureStockItem, stampsFor, syncInvoiceTotals } from '../ord
 
 export const CATEGORIES = ['Skips', 'Trailers', 'Gates', 'Fabrication', 'Welding', 'Other']
 
-const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'customer_company', 'customer_address', 'customer_vat', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'category', 'notes', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
+const JOB_FIELDS = ['quote_date', 'customer', 'phone', 'email', 'customer_company', 'customer_address', 'customer_vat', 'title', 'units', 'galv', 'markup', 'status', 'job_type', 'category', 'notes', 'discount_type', 'discount_value', 'request_id', 'mats', 'labour', 'extras', 'products', 'rates']
 
 export function blankJob(settings) {
   return {
     // A quote is a list of lines: products, and NJR's own lines for one-off work.
     title: '', category: null, mats: [], labour: [], extras: [], products: [],
-    customer: '', phone: '', email: '', notes: '', units: 1, galv: false,
+    customer: '', phone: '', email: '', notes: '', units: 1, galv: false, discount_type: 'amount', discount_value: 0,
     markup: settings.markup, status: 'Draft', request_id: null, rates: ratesFrom(settings),
   }
 }
@@ -156,7 +156,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
               <datalist id="c-cust-list">{customers.map((c) => <option key={c.customer} value={c.customer}>{c.phone || ''}</option>)}</datalist></div>
             <div className="field"><label htmlFor="c-phone">Cell</label><input id="c-phone" value={job.phone || ''} onChange={(e) => upd({ phone: e.target.value })} /></div>
             <div className="field"><label htmlFor="c-company">Company (optional)</label><input id="c-company" value={job.customer_company || ''} onChange={(e) => upd({ customer_company: e.target.value })} /></div>
-            <div className="field"><label htmlFor="c-vat">Customer VAT number (optional)</label><input id="c-vat" value={job.customer_vat || ''} onChange={(e) => upd({ customer_vat: e.target.value })} /></div>
+            <div className="field"><label htmlFor="c-vat">Client's VAT no. (optional)</label><input id="c-vat" value={job.customer_vat || ''} onChange={(e) => upd({ customer_vat: e.target.value })} /></div>
             <div className="field full"><label htmlFor="c-addr">Address (optional)</label><textarea id="c-addr" style={{ minHeight: 56 }} value={job.customer_address || ''} onChange={(e) => upd({ customer_address: e.target.value })} /></div>
             <div className="field full"><label htmlFor="c-email">Customer email</label><input id="c-email" type="email" value={job.email || ''} onChange={(e) => upd({ email: e.target.value })} placeholder="For emailing the quote and invoice" /></div>
             <div className="field full"><label htmlFor="c-title">Job description (heading on the quote)</label><input id="c-title" value={job.title} onChange={(e) => upd({ title: e.target.value })} placeholder="Filled in from the first line if left empty" /></div>
@@ -263,7 +263,16 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
         <aside className="sheet">
           <h3>Total</h3>
           <dl>
-            <dt>Price excl. VAT</dt><dd>{money(t.excl)}</dd>
+            <dt>Subtotal excl. VAT</dt><dd>{money(t.subtotal)}</dd>
+            <dt><label htmlFor="c-disc">Discount</label></dt>
+            <dd className="disc-in">
+              <input id="c-disc" className="money num" type="number" min="0" step={job.discount_type === 'pct' ? 1 : 10} value={job.discount_value || ''} placeholder="0"
+                onChange={(e) => upd({ discount_value: Math.max(0, n(e.target.value)) })} />
+              <select aria-label="Discount in rand or percent" value={job.discount_type || 'amount'} onChange={(e) => upd({ discount_type: e.target.value })}>
+                <option value="amount">R excl. VAT</option><option value="pct">%</option></select>
+            </dd>
+            {t.discount > 0 && <><dt className="hint">Less discount</dt><dd className="num">−{money(t.discount)}</dd>
+              <dt>Price excl. VAT</dt><dd>{money(t.excl)}</dd></>}
             <dt>VAT {r.vat}%</dt><dd>{money(t.vat)}</dd>
           </dl>
           <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>{job.invoice_no ? 'Invoice total' : 'Quote total'}</span><b className="num">{money(t.total)}</b></div>

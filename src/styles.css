@@ -478,3 +478,7 @@ tr.picked td{background:rgba(244,122,31,.08)}
 
 .buy-line{display:flex;gap:6px;align-items:center;margin:2px 0}
 .buy-line input{flex:1;min-width:160px}
+
+.disc-in{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.disc-in input{width:90px}
+.disc-in select{width:auto;padding:4px 6px}

@@ -155,3 +155,18 @@ test('own line from a Settings rate: cost + its markup + VAT', () => {
   assert.equal(rateLine('workshop', settings).cost_excl, 365)
   assert.equal(rateLine('galv', settings).price_incl, 31.63) // 22 × 1.25 × 1.15
 })
+
+test('a discount comes off the subtotal before VAT, as rand or percent', () => {
+  // One product at R1 150 incl. VAT = R1 000 excl.
+  const base = { mats: [], labour: [], extras: [], units: 1, galv: false, markup: 0, rates, products: [{ name: 'Skip', qty: 1, price_incl: 1150, cost_excl: 600 }] }
+  const pct = calc({ ...base, discount_type: 'pct', discount_value: 10 })
+  const r2 = (v) => Math.round(v * 100) / 100
+  assert.equal(r2(pct.subtotal), 1000); assert.equal(r2(pct.discount), 100); assert.equal(r2(pct.excl), 900)
+  assert.equal(Math.round(pct.vat * 100) / 100, 135); assert.equal(Math.round(pct.total * 100) / 100, 1035)
+  const amt = calc({ ...base, discount_type: 'amount', discount_value: 250 })
+  assert.equal(r2(amt.excl), 750); assert.equal(r2(amt.markup), 150)
+  assert.equal(calc({ ...base, discount_value: 5000 }).excl, 0) // never below zero
+  assert.equal(calc(base).discount, 0)
+  const doc = customerDoc({ ...base, discount_type: 'pct', discount_value: 10 })
+  assert.equal(doc.discount, 100); assert.equal(doc.discount_label, 'Discount (10%)'); assert.equal(doc.total, 1035)
+})

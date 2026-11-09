@@ -61,7 +61,8 @@ export default function CustomerDocPage({ token }) {
           <tbody>{doc.lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
         </table></div>
         <div className="totals num">
-          <span>Subtotal</span><span>{money(doc.excl)}</span>
+          <span>Subtotal</span><span>{money(doc.subtotal ?? doc.excl)}</span>
+          {doc.discount > 0 && <><span>{doc.discount_label || 'Discount'}</span><span>−{money(doc.discount)}</span><span>Total excl. VAT</span><span>{money(doc.excl)}</span></>}
           <span>VAT {doc.vat_rate}%</span><span>{money(doc.vat)}</span>
           <span className="grand">Total</span><span className="grand">{money(doc.total)}</span>
           {!isInvoice && <><span className="muted">Deposit {doc.deposit_pct}% to book</span><span className="muted">{money(doc.deposit)}</span></>}

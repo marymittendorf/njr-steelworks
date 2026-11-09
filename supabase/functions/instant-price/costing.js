@@ -112,14 +112,17 @@ export function calc(job) {
     productsCost += n(pl.cost_excl) * n(pl.qty)
   }
   const cost = costedCost + productsCost
-  const excl = costedExcl + productsExcl
+  const subtotal = costedExcl + productsExcl
+  // Discount off the subtotal, before VAT: a percentage, or a rand amount excl. VAT (never more than the subtotal).
+  const discount = Math.min(subtotal, job.discount_type === 'pct' ? (subtotal * n(job.discount_value)) / 100 : n(job.discount_value))
+  const excl = subtotal - discount
   const markup = excl - cost // profit
   const vat = (excl * r.vat) / 100
   const total = excl + vat
   return {
     u, kg: kg * u, hours: hours * u,
     materials: materials * u, labour: labour * u, consumables: consumables * u, galv: galv * u, extras: extras * u,
-    direct, overhead, costedCost, costedExcl, productsExcl, productsCost, cost, markup, excl, vat, total,
+    direct, overhead, costedCost, costedExcl, productsExcl, productsCost, cost, subtotal, discount, markup, excl, vat, total,
     margin: excl ? (markup / excl) * 100 : 0,
     deposit: (total * r.deposit) / 100,
   }
@@ -250,6 +253,11 @@ export function legacyToLine(job) {
   }
 }
 
+// "Discount (10%)" or "Discount" for the documents.
+export function discountLabel(job) {
+  return job.discount_type === 'pct' && n(job.discount_value) ? `Discount (${n(job.discount_value)}%)` : 'Discount'
+}
+
 // What the customer may see on their link (selling prices only, never costs): lines excl. VAT and totals.
 // Stored on the job (customer_doc) when it is saved or emailed.
 export function customerDoc(job) {
@@ -257,6 +265,7 @@ export function customerDoc(job) {
   const r2 = (v) => Math.round(v * 100) / 100
   return {
     lines: customerLines(job).map((l) => ({ desc: l.desc, qty: n(l.qty), amount: r2(l.amount) })),
+    subtotal: r2(t.subtotal), discount: r2(t.discount), discount_label: discountLabel(job),
     excl: r2(t.excl), vat: r2(t.vat), total: r2(t.total), deposit: r2(t.deposit),
     vat_rate: n(job.rates.vat), deposit_pct: n(job.rates.deposit), validity: n(job.rates.validity),
     client_parts: clientParts(job).map((m) => `${n(m.qty)} × ${m.name}`),
