@@ -106,7 +106,7 @@ export default function Expenses({ toast, me }) {
       <div className="kpis">
         <div className="kpi"><span className="label">Regular costs per month</span><b className="num">{money(perMonth)}</b><span className="sub">Incl. VAT, yearly costs ÷ 12</span></div>
         <div className="kpi"><span className="label">{filter === 'all' ? 'All expenses' : monthLabel(filter)}</span><b className="num">{money(sum('total'))}</b><span className="sub num">{shown.length} item{shown.length === 1 ? '' : 's'}</span></div>
-        <div className="kpi"><span className="label">VAT paid (claimable)</span><b className="num">{money(sum('vat'))}</b><span className="sub">Same period</span></div>
+        <div className="kpi"><span className="label">VAT paid to suppliers</span><b className="num">{money(sum('vat'))}</b><span className="sub">Same period · not claimable</span></div>
         <div className="kpi"><span className="label">Biggest category</span><b style={{ fontSize: '1.5rem' }}>{byCat[0]?.[0] || '—'}</b><span className="sub num">{byCat[0] ? money(byCat[0][1]) : ''}</span></div>
       </div>
 

@@ -8,11 +8,9 @@ import PurchaseImport from './PurchaseImport.jsx'
 const blank = { id: '', name: '', unit: 'each', cost: '', kg: '', qty: '' }
 const CALC_CODES = 'sq50, sq40, sq20, rhs76, ang40, ang50, ch100, fb50, sh16, sh2, sh45, chq3, mesh, axle, spring, wheel, coupler, jockey, lights, guards, reflect, lugs, paint, gate_hinge, gate_slide'
 
-// Parts & materials: the price list and the stock in one table. Cost is what you pay (excl. VAT),
+// Parts & materials: the price list and the stock in one table. Cost is what you pay (VAT included: NJR is not VAT registered),
 // On hand is how many you have. Buying (invoice upload or typed in) updates both.
 export default function PartsStock({ q = '', settings, prices, reload, syncFromPrices, me, toast }) {
-  const vat = n(settings?.vat ?? 15)
-  const incl = (cost) => Math.round(n(cost) * (1 + vat / 100) * 100) / 100
   const [purchases, setPurchases] = useState([])
   const [error, setError] = useState(null)
   const [importing, setImporting] = useState(null) // 'file' | 'manual'
@@ -71,7 +69,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
     <div className="block">
       <div className="block-head">
         <div><h3 style={{ fontSize: '1.6rem' }}>Parts &amp; materials</h3>
-          <span className="hint">{prices.length} items · stock on hand worth {money0(value)} excl. VAT. Cost is what you pay; new quotes use it.</span></div>
+          <span className="hint">{prices.length} items · stock on hand worth {money0(value)}. Cost is what you pay, VAT included (you can't claim it back); new quotes use it.</span></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn primary" type="button" onClick={() => setImporting('file')}>Upload purchase invoice</button>
           <button className="btn" type="button" onClick={() => setImporting('manual')}>Type in a purchase</button>
@@ -86,7 +84,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
             <div className="field"><label htmlFor="a-name">Name</label><input id="a-name" value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Square tube 50×50×2 mm" /></div>
             <div className="field"><label htmlFor="a-unit">Unit</label><input id="a-unit" value={adding.unit} onChange={(e) => setAdding({ ...adding, unit: e.target.value })} placeholder="each, 6 m length, sheet, box…" /></div>
             <div className="field"><label htmlFor="a-id">Short code (optional)</label><input id="a-id" value={adding.id} onChange={(e) => setAdding({ ...adding, id: e.target.value })} placeholder="e.g. sq50" /></div>
-            <div className="field"><label htmlFor="a-cost">Cost excl. VAT (R)</label><input id="a-cost" type="number" min="0" step="0.01" value={adding.cost} onChange={(e) => setAdding({ ...adding, cost: e.target.value })} /></div>
+            <div className="field"><label htmlFor="a-cost">Cost each, incl. VAT you pay (R)</label><input id="a-cost" type="number" min="0" step="0.01" value={adding.cost} onChange={(e) => setAdding({ ...adding, cost: e.target.value })} /></div>
             <div className="field"><label htmlFor="a-qty">On hand now</label><input id="a-qty" type="number" min="0" step="0.5" value={adding.qty} onChange={(e) => setAdding({ ...adding, qty: e.target.value })} /></div>
             <div className="field"><label htmlFor="a-kg">Mass per unit (kg, optional)</label><input id="a-kg" type="number" min="0" step="0.1" value={adding.kg} onChange={(e) => setAdding({ ...adding, kg: e.target.value })} /><span className="hint">Only needed for galvanising</span></div>
           </div>
@@ -95,7 +93,7 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
       )}
 
       <div className="tbl-wrap"><table>
-        <thead><tr><th>Item</th><th>Unit</th><th className="r">On hand</th><th className="r">Cost excl. VAT</th><th className="r">VAT {vat}%</th><th className="r">Cost incl. VAT</th><th className="r">Value excl. VAT</th><th className="r">Mass (kg)</th><th>In use</th></tr></thead>
+        <thead><tr><th>Item</th><th>Unit</th><th className="r">On hand</th><th className="r">Cost each (incl. VAT you pay)</th><th className="r">Value</th><th className="r">Mass (kg)</th><th>In use</th></tr></thead>
         <tbody>{shown.map((p) => (
           <tr key={p.id} style={{ opacity: p.active ? 1 : 0.5 }}>
             <td><input key={`n${p.name}`} className="part-name" aria-label={`Name of ${p.name}`} defaultValue={p.name}
@@ -103,18 +101,14 @@ export default function PartsStock({ q = '', settings, prices, reload, syncFromP
             <td className="hint">{p.unit}</td>
             <td className="r"><input className="qty num" aria-label={`On hand: ${p.name}`} type="number" step="0.5" defaultValue={n(p.qty_on_hand)}
               onBlur={(e) => n(e.target.value) !== n(p.qty_on_hand) && saveRow(p, { qty_on_hand: n(e.target.value) }, `${p.name}: ${n(e.target.value)} on hand`)} /></td>
-            <td className="r"><input key={`x${p.cost}`} className="money num" aria-label={`Cost excl. VAT of ${p.name}`} type="number" min="0" step="0.01" defaultValue={p.cost}
+            <td className="r"><input key={`x${p.cost}`} className="money num" aria-label={`Cost of ${p.name}`} type="number" min="0" step="0.01" defaultValue={p.cost}
               onBlur={(e) => n(e.target.value) !== n(p.cost) && saveRow(p, { cost: n(e.target.value) }, 'Cost updated')} /></td>
-            <td className="r num hint">{money(incl(p.cost) - n(p.cost))}</td>
-            {/* Type what you paid incl. VAT and the cost excl. VAT is worked out from it. */}
-            <td className="r"><input key={`i${p.cost}`} className="money num" aria-label={`Cost incl. VAT of ${p.name}`} type="number" min="0" step="0.01" defaultValue={incl(p.cost)}
-              onBlur={(e) => n(e.target.value) !== incl(p.cost) && saveRow(p, { cost: Math.round((n(e.target.value) / (1 + vat / 100)) * 100) / 100 }, 'Cost updated from the price incl. VAT')} /></td>
             <td className="r num">{money(n(p.qty_on_hand) * n(p.cost))}</td>
             <td className="r"><input className="qty num" aria-label={`Mass of ${p.name}`} type="number" min="0" step="0.1" defaultValue={p.kg}
               onBlur={(e) => n(e.target.value) !== n(p.kg) && saveRow(p, { kg: n(e.target.value) }, 'Mass updated')} /></td>
             <td><label className="check"><input type="checkbox" checked={p.active} onChange={(e) => saveRow(p, { active: e.target.checked }, e.target.checked ? 'Back in use' : 'Hidden from new quotes')} /> {p.active ? 'Yes' : 'Hidden'}</label></td>
           </tr>))}
-          {!shown.length && <tr><td colSpan="9" className="hint">{prices.length ? 'No item matches your search.' : 'No items yet.'}</td></tr>}
+          {!shown.length && <tr><td colSpan="7" className="hint">{prices.length ? 'No item matches your search.' : 'No items yet.'}</td></tr>}
         </tbody>
       </table></div>
       <p className="hint">Change "On hand" after a stock count or when parts are used. The website's instant price calculator uses items with these short codes: {CALC_CODES}.</p>

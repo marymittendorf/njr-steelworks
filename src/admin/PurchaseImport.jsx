@@ -76,6 +76,8 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
   const set = (i, patch) => setF({ ...f, items: f.items.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
   const exclUnit = (it) => (f.inclVat ? n(it.unit) / 1.15 : n(it.unit))
   const lineExcl = (it) => r2(n(it.qty) * exclUnit(it))
+  // What one costs NJR: VAT included, as NJR isn't VAT registered and can't claim it back.
+  const paidUnit = (it) => r2(exclUnit(it) * (f.vatOn ? 1.15 : 1))
   const excl = f ? r2(f.items.reduce((a, it) => a + lineExcl(it), 0)) : 0
   const vat = f && f.vatOn ? r2(excl * 0.15) : 0
   const total = r2(excl + vat)
@@ -105,7 +107,7 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
 
       const taken = new Set(prices.map((x) => x.id))
       for (const it of items) {
-        const unitCost = r2(exclUnit(it))
+        const unitCost = paidUnit(it)
         const qty = n(it.qty)
         let item = prices.find((x) => x.id === it.stock) || prices.find((x) => x.name.toLowerCase() === it.desc.trim().toLowerCase())
         if (item) {
@@ -143,7 +145,7 @@ export default function PurchaseImport({ manual, prices, me, toast, onClose, onS
       const taken = new Set(prices.map((x) => x.id))
       const onJob = []
       for (const it of items) {
-        const unitCost = r2(exclUnit(it))
+        const unitCost = paidUnit(it)
         let item = prices.find((x) => x.id === it.stock) || prices.find((x) => x.name.toLowerCase() === it.desc.trim().toLowerCase())
         if (recordOnly) { onJob.push({ id: item?.id || null }); continue }
         if (item) {

@@ -87,7 +87,7 @@ export default function WorkOutPrice({ line, prices, rates, markups, onUse, onCl
             <dt><label htmlFor="wo-mp">Markup on parts and materials %</label></dt><dd><input id="wo-mp" className="qty num" type="number" step="5" min="0" value={r.markup_parts} onChange={(e) => setR({ ...r, markup_parts: e.target.value })} /></dd>
             <dt><label htmlFor="wo-ml">Markup on labour ({pc.hours} h) %</label></dt><dd><input id="wo-ml" className="qty num" type="number" step="5" min="0" value={r.markup_labour} onChange={(e) => setR({ ...r, markup_labour: e.target.value })} /></dd>
           </dl>
-          <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>Suggested price each, incl. VAT</span><b className="num">{money0(price)}</b></div>
+          <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>Suggested price each</span><b className="num">{money0(price)}</b></div>
         </div>
         {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)' }}>No price yet for: {pc.unpriced.map((x) => x.name).join(', ')}. Add it under Parts.</p>}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

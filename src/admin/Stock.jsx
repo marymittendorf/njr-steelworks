@@ -71,7 +71,7 @@ export default function Stock({ go, toast, settings, prices, me, reload, syncFro
 
       <div className="kpis">
         <div className="kpi"><span className="label">In stock</span><b className="num">{inStock.length}</b></div>
-        <div className="kpi"><span className="label">Asking value</span><b className="num">{money0(value)}</b><span className="sub">Incl. VAT</span></div>
+        <div className="kpi"><span className="label">Asking value</span><b className="num">{money0(value)}</b><span className="sub">What you're asking</span></div>
         <div className="kpi"><span className="label">Sold</span><b className="num">{sold.length}</b><span className="sub num">{money0(sold.reduce((a, i) => a + n(i.sold_price), 0))}</span></div>
       </div>
 
@@ -82,7 +82,7 @@ export default function Stock({ go, toast, settings, prices, me, reload, syncFro
             <div className="field"><label htmlFor="sa-title">What it is</label><input id="sa-title" value={adding.title} onChange={(e) => setAdding({ ...adding, title: e.target.value })} placeholder="3.0 × 1.5 m cage trailer" /></div>
             <div className="field"><label htmlFor="sa-date">Finished on</label><input id="sa-date" type="date" value={adding.built_on} onChange={(e) => setAdding({ ...adding, built_on: e.target.value })} /></div>
             <div className="field"><label htmlFor="sa-desc">Details (optional)</label><input id="sa-desc" value={adding.description} onChange={(e) => setAdding({ ...adding, description: e.target.value })} placeholder="Galvanised, 13&quot; wheels, mesh cage" /></div>
-            <div className="field"><label htmlFor="sa-price">Asking price incl. VAT (R)</label><input id="sa-price" type="number" min="0" step="100" value={adding.asking_price} onChange={(e) => setAdding({ ...adding, asking_price: e.target.value })} /></div>
+            <div className="field"><label htmlFor="sa-price">Asking price (R)</label><input id="sa-price" type="number" min="0" step="100" value={adding.asking_price} onChange={(e) => setAdding({ ...adding, asking_price: e.target.value })} /></div>
           </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button className="btn primary" type="submit">Add to stock</button><button className="btn ghost" type="button" onClick={() => setAdding(null)}>Cancel</button></div>
         </form>
@@ -112,7 +112,7 @@ export default function Stock({ go, toast, settings, prices, me, reload, syncFro
           <div className="fgrid">
             <div className="field"><label htmlFor="ss-to">Buyer</label><input id="ss-to" value={selling.sold_to} onChange={(e) => setSelling({ ...selling, sold_to: e.target.value })} /></div>
             <div className="field"><label htmlFor="ss-ph">Buyer's cell</label><input id="ss-ph" value={selling.sold_phone} onChange={(e) => setSelling({ ...selling, sold_phone: e.target.value })} /></div>
-            <div className="field"><label htmlFor="ss-price">Price incl. VAT (R)</label><input id="ss-price" type="number" min="0" step="100" value={selling.sold_price} onChange={(e) => setSelling({ ...selling, sold_price: e.target.value })} /></div>
+            <div className="field"><label htmlFor="ss-price">Price (R)</label><input id="ss-price" type="number" min="0" step="100" value={selling.sold_price} onChange={(e) => setSelling({ ...selling, sold_price: e.target.value })} /></div>
             <div className="field"><label htmlFor="ss-date">Date sold</label><input id="ss-date" type="date" value={selling.sold_on} onChange={(e) => setSelling({ ...selling, sold_on: e.target.value })} /></div>
           </div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8 }}><button className="btn primary" type="submit">Mark as sold</button><button className="btn ghost" type="button" onClick={() => setSelling(null)}>Cancel</button></div>

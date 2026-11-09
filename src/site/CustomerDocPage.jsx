@@ -21,6 +21,7 @@ export default function CustomerDocPage({ token }) {
   const date = isInvoice ? d.invoice_date : d.quote_date
   const validUntil = !isInvoice && d.quote_date ? addDays(d.quote_date, doc.validity || 14) : null
   const paid = Number(d.amount_paid || 0)
+  const vatOn = Number(doc.vat_rate) > 0 // NJR isn't VAT registered: no VAT on the document
 
   async function send() {
     if (!answer.name.trim()) { setState({ busy: false, error: 'Please type your name.', done: '' }); return }
@@ -47,7 +48,7 @@ export default function CustomerDocPage({ token }) {
               {(d.people || []).map((p) => <div className="muted" key={p.name}>{p.name} {p.phone}{p.email && ` · ${p.email}`}</div>)}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <h2>{isInvoice ? 'Tax invoice' : 'Quotation'}</h2>
+            <h2>{isInvoice ? (vatOn ? 'Tax invoice' : 'Invoice') : 'Quotation'}</h2>
             <div className="num"><b>{number}</b></div>
             {date && <div className="muted">Date {shortDate(date)}</div>}
             {validUntil && <div className="muted">Valid until {shortDate(validUntil)}</div>}
@@ -57,13 +58,13 @@ export default function CustomerDocPage({ token }) {
           {d.customer_company ? <><b>{d.customer_company}</b><br />{d.customer}</> : <b>{d.customer}</b>}
           {d.customer_address && <><br />{d.customer_address}</>}{d.customer_vat && <><br />VAT no. {d.customer_vat}</>}</p>
         <div className="tbl-wrap"><table>
-          <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
+          <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">{vatOn ? 'Amount excl. VAT' : 'Amount'}</th></tr></thead>
           <tbody>{doc.lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
         </table></div>
         <div className="totals num">
           <span>Subtotal</span><span>{money(doc.subtotal ?? doc.excl)}</span>
-          {doc.discount > 0 && <><span>{doc.discount_label || 'Discount'}</span><span>−{money(doc.discount)}</span><span>Total excl. VAT</span><span>{money(doc.excl)}</span></>}
-          <span>VAT {doc.vat_rate}%</span><span>{money(doc.vat)}</span>
+          {doc.discount > 0 && <><span>{doc.discount_label || 'Discount'}</span><span>−{money(doc.discount)}</span>{vatOn && <><span>Total excl. VAT</span><span>{money(doc.excl)}</span></>}</>}
+          {vatOn && <><span>VAT {doc.vat_rate}%</span><span>{money(doc.vat)}</span></>}
           <span className="grand">Total</span><span className="grand">{money(doc.total)}</span>
           {!isInvoice && <><span className="muted">Deposit {doc.deposit_pct}% to book</span><span className="muted">{money(doc.deposit)}</span></>}
           {isInvoice && paid > 0 && <><span className="muted">Paid to date</span><span className="muted">−{money(paid)}</span></>}

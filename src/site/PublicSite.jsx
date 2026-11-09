@@ -71,7 +71,7 @@ export default function PublicSite() {
         <div className="wrap">
           <div className="band-head">
             <h2>What we do</h2>
-            <p>Prices include VAT. Your quote is priced to your exact size and spec.</p>
+            <p>Your quote is priced to your exact size and spec.</p>
           </div>
           <div className="services five">
             {SERVICES.map((s) => {

@@ -21,7 +21,7 @@ export default function Reports() {
     const from = `${month}-01`, to = lastDay(month)
     Promise.all([
       supabase.from('jobs').select('*').not('invoice_no', 'is', null).is('invoice_voided_at', null).gte('invoice_date', from).lte('invoice_date', to),
-      supabase.from('expenses').select('category, amount_excl').gte('paid_on', from).lte('paid_on', to),
+      supabase.from('expenses').select('category, amount_excl, vat').gte('paid_on', from).lte('paid_on', to),
     ]).then(([j, e]) => { setError(j.error || e.error); setData({ jobs: j.data || [], expenses: e.data || [] }) })
   }, [month])
 
@@ -43,7 +43,7 @@ export default function Reports() {
   const rows = Object.entries(byType).filter(([c, r]) => r.count || c !== 'Type not set')
   const tot = rows.reduce((a, [, r]) => ({ sales: a.sales + r.sales, cost: a.cost + r.cost, count: a.count + r.count }), { sales: 0, cost: 0, count: 0 })
   const exp = {}
-  for (const e of data.expenses) exp[e.category] = (exp[e.category] || 0) + n(e.amount_excl)
+  for (const e of data.expenses) exp[e.category] = (exp[e.category] || 0) + n(e.amount_excl) + n(e.vat) // NJR can't claim the VAT back
   const expTotal = Object.values(exp).reduce((a, v) => a + v, 0)
   const pct = (p, s) => (s > 0 ? `${((p / s) * 100).toFixed(0)}%` : '—')
 
@@ -57,7 +57,7 @@ export default function Reports() {
         ['Gross profit', money(tot.sales - tot.cost), null, tot.sales - tot.cost < 0 ? 'bad' : 'good'],
         ['Expenses paid', money(expTotal)],
       ]} />
-      <div className="block-head"><h3>By type of work</h3><span className="hint">Invoices dated in {monthName(month)}, excl. VAT</span></div>
+      <div className="block-head"><h3>By type of work</h3><span className="hint">Invoices dated in {monthName(month)}</span></div>
       <div className="tbl-wrap block"><table>
         <thead><tr><th>Type</th><th className="r">Invoices</th><th className="r">Sales</th><th className="r">Cost</th><th className="r">Profit</th><th className="r">Margin</th></tr></thead>
         <tbody>
@@ -70,7 +70,7 @@ export default function Reports() {
       </table></div>
       {byType['Type not set'].count > 0 && <p className="hint">Some invoices have no type. Open the quote and choose one to sort them.</p>}
 
-      <div className="block-head"><h3>Expenses paid</h3><span className="hint">{monthName(month)}, excl. VAT</span></div>
+      <div className="block-head"><h3>Expenses paid</h3><span className="hint">{monthName(month)}, incl. the VAT you paid</span></div>
       {!expTotal ? <p className="hint">No expenses recorded for this month.</p> : (
         <div className="tbl-wrap"><table>
           <thead><tr><th>Category</th><th className="r">Amount</th></tr></thead>

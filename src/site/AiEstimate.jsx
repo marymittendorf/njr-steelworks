@@ -42,7 +42,7 @@ export default function AiEstimate() {
         <div className="ai-result">
           {r.ok ? (
             <>
-              <span className="label">Estimated price{r.units > 1 ? ` for ${r.units}` : ''}, incl. VAT</span>
+              <span className="label">Estimated price{r.units > 1 ? ` for ${r.units}` : ''}</span>
               <div className="ai-range num">{money0(r.low)} – {money0(r.high)}</div>
               <b>{r.title}</b>
               {r.assumptions?.length > 0 && <><p className="hint" style={{ marginBottom: 4 }}>Based on:</p><ul>{r.assumptions.map((a) => <li key={a}>{a}</li>)}</ul></>}
@@ -71,7 +71,7 @@ export default function AiEstimate() {
           {state.error && <div className="errmsg">{state.error}</div>}
           <div style={{ marginTop: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <button className="btn primary" type="submit" disabled={state.busy}>{state.busy ? 'Working it out…' : 'Get my estimate'}</button>
-            <span className="hint">{state.busy ? 'This takes up to a minute.' : 'Prices include VAT.'}</span>
+            <span className="hint">{state.busy ? 'This takes up to a minute.' : 'NJR confirms the final price.'}</span>
           </div>
         </form>
       )}

@@ -43,7 +43,7 @@ export default function InstantCalc() {
     const { error } = await supabase.from('requests').insert({
       name, phone, email: contact.email.trim() || null,
       type: REQUEST_TYPE[product.category] || 'Custom fabrication',
-      detail: `${line}: ${money0(total)} incl. VAT${note ? `\n\n${note}` : ''}`,
+      detail: `${line}: ${money0(total)}${note ? `\n\n${note}` : ''}`,
       timing: 'Instant price', status: 'New', source: 'Calculator',
       ai_estimate: {
         confidence: 'products', title: line, total, low: total, high: total,
@@ -67,7 +67,7 @@ export default function InstantCalc() {
           </div>
         )}
       </div>
-      <p className="hint" style={{ marginTop: 0 }}>Pick what you need and see the price straight away, incl. VAT. Nico or Jeanette confirm and book it in.</p>
+      <p className="hint" style={{ marginTop: 0 }}>Pick what you need and see the price straight away. Nico or Jeanette confirm and book it in.</p>
 
       <div className="fgrid calc-grid">
         <div className="field"><label htmlFor="ic-product">Item</label>
@@ -86,7 +86,7 @@ export default function InstantCalc() {
       </div>
 
       <div className="ai-result" style={{ marginTop: 16 }}>
-        <span className="label">Price{pick.qty > 1 ? ` for ${pick.qty}` : ''}, incl. VAT</span>
+        <span className="label">Price{pick.qty > 1 ? ` for ${pick.qty}` : ''}</span>
         <div className="ai-range num">{money0(total)}</div>
         {pick.qty > 1 && <span className="hint">{money0(each)} each</span>}
 

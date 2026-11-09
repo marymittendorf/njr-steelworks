@@ -11,7 +11,7 @@ const RATE_FIELDS = [
   ['consumables', 'Consumables (R/hour)', 'Wire, gas, discs, electricity'],
   ['overhead', 'Workshop overhead (%)', 'Rent, tools, vehicle, admin'],
 
-  ['vat', 'VAT (%)', 'South Africa: 15%'],
+  ['vat', 'VAT you charge (%)', "0: NJR isn't VAT registered. 15 only once registered"],
   ['galv', 'Galvanising (R/kg)', 'Outsourced hot-dip rate'],
   ['validity', 'Quote valid (days)', 'Printed on quotes'],
   ['deposit', 'Deposit (%)', 'Required to book work'],
@@ -67,9 +67,9 @@ export default function Settings({ settings, prices, syncFromPrices, toast, me }
       </div>
       <ErrorNote error={error} />
 
-      <div className="block-head"><h3>Website prices</h3><span className="hint">The "from" price on each service card, incl. VAT. Leave the price empty to show "Ask for a quote".</span></div>
+      <div className="block-head"><h3>Website prices</h3><span className="hint">The "from" price on each service card. Leave the price empty to show "Ask for a quote".</span></div>
       <div className="tbl-wrap block"><table>
-        <thead><tr><th>Card</th><th>Wording before the price</th><th className="r">Price incl. VAT (R)</th></tr></thead>
+        <thead><tr><th>Card</th><th>Wording before the price</th><th className="r">Price (R)</th></tr></thead>
         <tbody>
           {SERVICES.map((s) => (
             <tr key={s.key}>

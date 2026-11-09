@@ -188,7 +188,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                     <button type="button" onClick={() => { addLine(ownLine()); setOwnMenu(false) }}>Blank line</button>
                     {RATE_LINES.map(([k, label]) => {
                       const l = rateLine(k, settings)
-                      return <button key={k} type="button" onClick={() => { addLine(l); setOwnMenu(false) }}>{label} <span className="hint num">· {money(l.price_incl)} incl. VAT</span></button>
+                      return <button key={k} type="button" onClick={() => { addLine(l); setOwnMenu(false) }}>{label} <span className="hint num">· {money(l.price_incl)}</span></button>
                     })}
                   </div>}
                 </div>
@@ -201,7 +201,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                   <div style={{ flex: 1, minWidth: 240 }}><PartPicker prices={prices} value={addingPart.id} autoFocus={!addingPart.id} onChange={(id) => setAddingPart({ ...addingPart, id })} /></div>
                   <label className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Qty <input className="qty num" aria-label="How many" type="number" min="1" step="1" value={addingPart.qty} onChange={(e) => setAddingPart({ ...addingPart, qty: e.target.value })} /></label>
                   <label className="hint" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>Markup <input className="qty num" aria-label="Markup %" type="number" min="0" step="5" value={addingPart.markup} onChange={(e) => setAddingPart({ ...addingPart, markup: e.target.value })} />%</label>
-                  {line && <span className="num">{money(line.price_incl)} each incl. VAT{!n(part.cost) && <span className="tx-warn"> · no cost yet</span>}</span>}
+                  {line && <span className="num">{money(line.price_incl)} each{!n(part.cost) && <span className="tx-warn"> · no cost yet</span>}</span>}
                   <button className="btn small primary" type="button" disabled={!line} onClick={() => { addLine(line); setAddingPart(null) }}>Add</button>
                   <button className="btn small ghost" type="button" onClick={() => setAddingPart(null)}>Cancel</button>
                 </div>)
@@ -226,7 +226,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
             })()}
 
             <div className="tbl-wrap"><table className="lines-tbl">
-              <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each incl. VAT</th><th className="r">Costs you each</th><th className="r">Line incl. VAT</th><th /></tr></thead>
+              <thead><tr><th>Item</th><th className="r">Qty</th><th className="r">Price each</th><th className="r">Costs you each</th><th className="r">Line total</th><th /></tr></thead>
               <tbody>
                 {lines.map((l, i) => (
                   <tr key={i}>
@@ -238,7 +238,7 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                     <td className="r"><input className="qty num" aria-label="Quantity" type="number" min="1" step="1" value={l.qty} onChange={(e) => updLine(i, { qty: e.target.value })} /></td>
                     <td className="r"><input className="money num" aria-label="Price each" type="number" min="0" step="10" value={l.price_incl} onChange={(e) => updLine(i, { price_incl: e.target.value })} /></td>
                     <td className="r">{l.custom
-                      ? <input className="money num" aria-label="Costs you each (excl. VAT)" type="number" min="0" step="10" value={l.cost_excl} placeholder="optional" onChange={(e) => updLine(i, { cost_excl: e.target.value })} />
+                      ? <input className="money num" aria-label="Costs you each" type="number" min="0" step="10" value={l.cost_excl} placeholder="optional" onChange={(e) => updLine(i, { cost_excl: e.target.value })} />
                       : <span className="num hint">{money(l.cost_excl)}</span>}</td>
                     <td className="r num">{money(n(l.qty) * n(l.price_incl))}</td>
                     <td><button className="x" type="button" aria-label={`Remove ${l.name || 'line'}`} onClick={() => delLine(i)}>×</button></td>
@@ -256,24 +256,24 @@ export default function JobCosting({ target, settings, prices, toast, go, me }) 
                 {!lines.length && !t.costedExcl && <tr><td colSpan="6" className="hint">Add a product (e.g. 2 m³ skip), or your own line for one-off work.</td></tr>}
               </tbody>
             </table></div>
-            <p className="hint">Prices include VAT. "Costs you" is excl. VAT and never shows on the customer's quote. Changing a product's price here doesn't change the product itself.</p>
+            <p className="hint">"Costs you" never shows on the customer's quote. Changing a product's price here doesn't change the product itself.</p>
           </div>
         </div>
 
         <aside className="sheet">
           <h3>Total</h3>
           <dl>
-            <dt>Subtotal excl. VAT</dt><dd>{money(t.subtotal)}</dd>
+            <dt>{r.vat > 0 ? 'Subtotal excl. VAT' : 'Subtotal'}</dt><dd>{money(t.subtotal)}</dd>
             <dt><label htmlFor="c-disc">Discount</label></dt>
             <dd className="disc-in">
               <input id="c-disc" className="money num" type="number" min="0" step={job.discount_type === 'pct' ? 1 : 10} value={job.discount_value || ''} placeholder="0"
                 onChange={(e) => upd({ discount_value: Math.max(0, n(e.target.value)) })} />
               <select aria-label="Discount in rand or percent" value={job.discount_type || 'amount'} onChange={(e) => upd({ discount_type: e.target.value })}>
-                <option value="amount">R excl. VAT</option><option value="pct">%</option></select>
+                <option value="amount">R</option><option value="pct">%</option></select>
             </dd>
             {t.discount > 0 && <><dt className="hint">Less discount</dt><dd className="num">−{money(t.discount)}</dd>
-              <dt>Price excl. VAT</dt><dd>{money(t.excl)}</dd></>}
-            <dt>VAT {r.vat}%</dt><dd>{money(t.vat)}</dd>
+              {r.vat > 0 && <><dt>Price excl. VAT</dt><dd>{money(t.excl)}</dd></>}</>}
+            {r.vat > 0 && <><dt>VAT {r.vat}%</dt><dd>{money(t.vat)}</dd></>}
           </dl>
           <div className="tot"><span className="label" style={{ color: 'var(--accent-ink)' }}>{job.invoice_no ? 'Invoice total' : 'Quote total'}</span><b className="num">{money(t.total)}</b></div>
           <div className="row"><span>Deposit {r.deposit}%</span><b className="num">{money0(t.deposit)}</b></div>

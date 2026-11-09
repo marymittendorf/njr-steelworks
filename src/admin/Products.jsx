@@ -45,7 +45,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
       <ErrorNote error={error} />
       {!list.length ? <div className="card hint">No products yet. Click "New product", e.g. "2 m³ skip": add its parts from your parts list and the workshop hours, and the app suggests a price.</div> : (
         <div className="tbl-wrap"><table>
-          <thead><tr><th>Product</th><th className="r">Costs you excl. VAT</th><th className="r">Suggested</th><th className="r">Your price incl. VAT</th><th className="r">Margin</th><th>Website</th></tr></thead>
+          <thead><tr><th>Product</th><th className="r">Costs you</th><th className="r">Suggested</th><th className="r">Your price</th><th className="r">Margin</th><th>Website</th></tr></thead>
           <tbody>{list.filter((p) => matches(q, p.name, p.category, p.spec)).map((p) => {
             const pc = productCost(p, prices, rates)
             const sug = suggestedSplit(pc, { parts: p.markup_parts ?? markupsFrom(settings).parts, labour: p.markup_labour ?? markupsFrom(settings).labour }, rates.vat)
@@ -54,9 +54,9 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
               <tr key={p.id} className="clickable" tabIndex={0} onClick={() => setEdit({ ...p, price_incl: p.price_incl ?? '' })} onKeyDown={(e) => e.key === 'Enter' && setEdit(p)} style={{ opacity: p.active ? 1 : 0.5 }}>
                 <td><b>{p.name}</b><div className="hint">{p.category}{p.options?.length ? ` · ${p.options.length} option${p.options.length > 1 ? 's' : ''}` : ''}{!p.active ? ' · not in use' : ''}</div>
                   {pc.unpriced.length > 0 && <div className="hint" style={{ color: 'var(--warn)' }}>No price yet for: {pc.unpriced.map((x) => x.name).join(', ')}</div>}</td>
-                <td className="r num">{money(pc.cost)}<div className="hint">{money(pc.cost * (1 + rates.vat / 100))} incl. VAT · {pc.hours} h</div></td>
+                <td className="r num">{money(pc.cost)}<div className="hint">{pc.hours} h</div></td>
                 <td className="r num">{money0(sug)}</td>
-                <td className="r num"><b>{p.price_incl ? money0(p.price_incl) : '—'}</b>{p.price_incl > 0 && <div className="hint">{money(p.price_incl / (1 + rates.vat / 100))} excl. VAT</div>}</td>
+                <td className="r num"><b>{p.price_incl ? money0(p.price_incl) : '—'}</b></td>
                 <td className="r num" style={{ color: !p.price_incl ? undefined : m < lowMargin ? 'var(--bad)' : m < n(settings.markup) * 0.75 ? 'var(--warn)' : 'var(--good)' }}>
                   {p.price_incl ? `${m.toFixed(1)}%` : '—'}{p.price_incl && m < lowMargin && <div className="hint" style={{ color: 'var(--bad)' }}>check price</div>}</td>
                 <td>{p.on_website ? 'Shown' : <span className="hint">—</span>}</td>
@@ -64,7 +64,7 @@ export default function Products({ settings, prices, toast, me, syncFromPrices }
           })}</tbody>
         </table></div>
       )}
-      <p className="hint">"Costs you" uses today's part prices from Parts and your labour, consumables and overhead rates. Margin is profit as a % of your price excl. VAT.</p>
+      <p className="hint">"Costs you" uses today's part prices from Parts and your labour, consumables and overhead rates. Margin is profit as a % of your price.</p>
       {edit && <ProductEditor product={edit} prices={prices} settings={settings} rates={rates} me={me} toast={toast}
         onClose={() => setEdit(null)} onSaved={async () => { setEdit(null); await syncWebsiteFromProducts(settings); await syncFromPrices?.(); load() }} />}
     </>
@@ -160,7 +160,7 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
 
         <div className="block-head" style={{ marginTop: 14 }}><h3>Options <span className="hint">(add-ons the customer can choose)</span></h3><button className="btn small" type="button" onClick={() => setP({ ...p, options: [...p.options, { name: '', price_incl: '', cost_excl: '' }] })}>Add option</button></div>
         {p.options.length > 0 && <div className="tbl-wrap"><table>
-          <thead><tr><th>Option</th><th className="r">Adds to price (incl. VAT)</th><th className="r">Adds to your cost (excl. VAT)</th><th /></tr></thead>
+          <thead><tr><th>Option</th><th className="r">Adds to price</th><th className="r">Adds to your cost</th><th /></tr></thead>
           <tbody>{p.options.map((o, i) => (
             <tr key={i}>
               <td><input aria-label="Option" value={o.name} onChange={(e) => setRow('options', i, { name: e.target.value })} placeholder="e.g. Galvanised" /></td>
@@ -180,11 +180,11 @@ export function ProductEditor({ product, prices, settings, rates, me, toast, onC
             <dt><b>Costs you</b></dt><dd><b>{money(pc.cost)}</b></dd>
             <dt>Markup on parts and materials <input className="qty num" aria-label="Markup on parts %" type="number" step="5" min="0" value={p.markup_parts ?? def.parts} onChange={(e) => setP({ ...p, markup_parts: e.target.value })} style={{ width: 64, display: 'inline-block' }} />%</dt><dd className="hint">{money(pc.partsCost)} cost</dd>
             <dt>Markup on labour <input className="qty num" aria-label="Markup on labour %" type="number" step="5" min="0" value={p.markup_labour ?? def.labour} onChange={(e) => setP({ ...p, markup_labour: e.target.value })} style={{ width: 64, display: 'inline-block' }} />%</dt><dd className="hint">{money(pc.labourCost)} cost</dd>
-            <dt><b>Suggested price incl. VAT</b></dt><dd><b>{money0(sug)}</b></dd>
+            <dt><b>Suggested price</b></dt><dd><b>{money0(sug)}</b></dd>
           </dl>
           {pc.unpriced.length > 0 && <p className="hint" style={{ color: 'var(--warn)', padding: '0 18px' }}>No price yet for {pc.unpriced.map((x) => x.name).join(', ')}: add it under Parts, or the cost is too low.</p>}
           <div className="row" style={{ alignItems: 'center' }}>
-            <label htmlFor="pr-price"><b>Your price incl. VAT</b></label>
+            <label htmlFor="pr-price"><b>Your price</b></label>
             <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input id="pr-price" className="money num" type="number" min="0" step="10" value={p.price_incl} onChange={(e) => setP({ ...p, price_incl: e.target.value })} placeholder={String(sug)} style={{ width: 130 }} />
               <button className="btn small" type="button" onClick={() => setP({ ...p, price_incl: sug })}>Use suggested</button>

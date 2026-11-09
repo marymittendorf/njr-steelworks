@@ -20,7 +20,7 @@ export default function QuoteDoc({ job, settings, onClose, onSent, email = false
   return (
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="doc-bar">
-        <span className="label" style={{ color: '#fff' }}>Customer view · {isInvoice ? 'tax invoice' : 'quotation'}</span>
+        <span className="label" style={{ color: '#fff' }}>Customer view · {isInvoice ? (Number(job.rates.vat) > 0 ? 'tax invoice' : 'invoice') : 'quotation'}</span>
         <div style={{ display: 'flex', gap: 8 }}>
           {job.id && <button className="btn small primary" type="button" onClick={() => setEmailing(!emailing)}>Email to client</button>}
           <button className="btn small" type="button" onClick={() => window.print()}>Print / save PDF</button>
@@ -39,6 +39,7 @@ export function DocPaper({ job, settings, paperRef }) {
   const r = job.rates
   const isInvoice = Boolean(job.invoice_no)
   const lines = customerLines(job)
+  const vatOn = Number(r.vat) > 0 // NJR isn't VAT registered: no VAT on the document
   return (
     <div className="doc" ref={paperRef}>
       <div className="dh">
@@ -51,7 +52,7 @@ export function DocPaper({ job, settings, paperRef }) {
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <h2>{isInvoice ? 'Tax invoice' : 'Quotation'}</h2>
+          <h2>{isInvoice ? (vatOn ? 'Tax invoice' : 'Invoice') : 'Quotation'}</h2>
           <div className="num"><b>{isInvoice ? job.invoice_no : job.quote_no}</b></div>
           <div className="muted">Date {shortDate(isInvoice ? job.invoice_date : job.quote_date)}</div>
           {isInvoice && <div className="muted num">Quote ref {job.quote_no}</div>}
@@ -60,13 +61,13 @@ export function DocPaper({ job, settings, paperRef }) {
       </div>
       <BillTo who={job} />
       <div className="tbl-wrap"><table>
-        <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">Amount excl. VAT</th></tr></thead>
+        <thead><tr><th>Description</th><th className="r">Qty</th><th className="r">{vatOn ? 'Amount excl. VAT' : 'Amount'}</th></tr></thead>
         <tbody>{lines.map((l, i) => <tr key={i}><td>{l.desc}</td><td className="r num">{l.qty}</td><td className="r num">{money(l.amount)}</td></tr>)}</tbody>
       </table></div>
       <div className="totals num">
         <span>Subtotal</span><span>{money(t.subtotal ?? t.excl)}</span>
-        {t.discount > 0 && <><span>{discountLabel(job)}</span><span>−{money(t.discount)}</span><span>Total excl. VAT</span><span>{money(t.excl)}</span></>}
-        <span>VAT {r.vat}%</span><span>{money(t.vat)}</span>
+        {t.discount > 0 && <><span>{discountLabel(job)}</span><span>−{money(t.discount)}</span>{vatOn && <><span>Total excl. VAT</span><span>{money(t.excl)}</span></>}</>}
+        {vatOn && <><span>VAT {r.vat}%</span><span>{money(t.vat)}</span></>}
         <span className="grand">Total</span><span className="grand">{money(t.total)}</span>
         {!isInvoice && <><span className="muted">Deposit {r.deposit}% to book</span><span className="muted">{money(t.deposit)}</span></>}
         {isInvoice && Number(job.amount_paid) > 0 && <><span className="muted">Paid to date</span><span className="muted">−{money(job.amount_paid)}</span></>}
@@ -98,7 +99,7 @@ function EmailPanel({ job, isInvoice, total, docRef, onSent }) {
   const [message, setMessage] = useState(isInvoice
     ? `Hi ${first},
 
-Please find attached invoice ${number} for ${job.title} (${money(total)} incl. VAT).
+Please find attached invoice ${number} for ${job.title} (${money(total)}${Number(job.rates.vat) > 0 ? ' incl. VAT' : ''}).
 ${link ? `\nView it online: ${link}\n` : ''}
 Thank you for your business.
 
@@ -107,7 +108,7 @@ NJR Steelworks
 George, Western Cape`
     : `Hi ${first},
 
-Thank you for your enquiry. Please find attached quotation ${number} for ${job.title} (${money(total)} incl. VAT).
+Thank you for your enquiry. Please find attached quotation ${number} for ${job.title} (${money(total)}${Number(job.rates.vat) > 0 ? ' incl. VAT' : ''}).
 
 ${link ? `Accept or decline it online here: ${link}\n\nOr reply` : 'Reply'} to this email or WhatsApp us to accept, and we'll book your job.
 

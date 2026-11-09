@@ -86,7 +86,7 @@ export default function Requests({ settings, prices, go, refreshCount }) {
           </div>
           <div className="label" style={{ color: 'var(--accent-hi)' }}>{r.type} · {r.timing}{r.source === 'AI estimate' && ' · from the AI estimator'}{r.source === 'Calculator' && ' · from the instant price calculator'}</div>
           {r.ai_estimate?.products
-            ? <div className="ai-box"><b>Customer picked {r.ai_estimate.title}: shown {money0(r.ai_estimate.total)} incl. VAT</b></div>
+            ? <div className="ai-box"><b>Customer picked {r.ai_estimate.title}: shown {money0(r.ai_estimate.total)}</b></div>
             : r.ai_estimate && (r.ai_estimate.failed
             ? <div className="ai-box"><b>The estimator couldn't price this.</b>{r.ai_estimate.questions?.length > 0 && <> It would ask: {r.ai_estimate.questions.join(' ')}</>}</div>
             : <div className="ai-box">
